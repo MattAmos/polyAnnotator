@@ -5,21 +5,22 @@ import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from widget import Widget
+from frame import Frame
 
 
 ##### MAIN WINDOW CLASS #####
 class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
-		self.widget = Widget()
+		self.frame = Frame()
 		self.initUI()
 
 	def initUI(self):				
-		self.setCentralWidget(self.widget) 
+		self.setCentralWidget(self.frame) 
 		
 		exitAct = QAction(QIcon("images/web.png"), '&Exit', self)
 		exitAct.setShortcut('Ctrl+Q')
+		exitAct.setShortcut('Escape')
 		exitAct.setStatusTip('Exit Application')
 		exitAct.triggered.connect(self.closeEvent)
 
@@ -36,9 +37,10 @@ class MainWindow(QMainWindow):
 		fileMenu.addMenu(impMenu)
 		fileMenu.addAction(exitAct)
 
-
-		self.setGeometry(0, 0, 1280, 720)
-		self.setWindowTitle('Simple Menu')
+		self.setMouseTracking(True)
+		screen = QDesktopWidget().screenGeometry()
+		self.setGeometry(0, 0, 0.6 * screen.width(), 0.6 * screen.height())
+		self.setWindowTitle('Poly Annotator v0.01')
 		self.center()
 		self.show()
 
@@ -56,12 +58,16 @@ class MainWindow(QMainWindow):
 
 	def contextMenuEvent(self, event):
 		cmenu = QMenu(self)
-		newAct = cmenu.addAction("New")
-		opnAct = cmenu.addAction("Open")
+		saveAct = cmenu.addAction("Save")
+		clearAct = cmenu.addAction("Clear")
 		quitAct = cmenu.addAction("Quit")
 		action = cmenu.exec_(self.mapToGlobal(event.pos()))
-		if action == quitAct:
-			self.closeEvent
+		if action == saveAct:
+			self.frame.savePoly()
+		elif action == clearAct:
+			self.frame.clearPoints()
+		elif action == quitAct:
+			self.closeEvent()
 
 	def closeEvent(self):
 		reply = QMessageBox.question(self, 'Message', "Are you sure you want to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

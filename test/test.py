@@ -3,7 +3,6 @@
 
 import sys
 from PyQt5.QtWidgets import QApplication
-from widget import Widget
 from mainWindow import MainWindow
 
 if __name__ == "__main__":

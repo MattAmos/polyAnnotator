@@ -84,9 +84,7 @@ class MainWindow(QMainWindow):
 				self.frame.ctrlKey = True
 			# CTRL + Z
 			elif e.key() == Qt.Key_Z and self.frame.ctrlKey:
-				if len(self.frame.undoBuff) > 0:
-					self.frame.points = self.frame.undoBuff[-1]
-					self.frame.undoBuff = self.frame.undoBuff[:-1]
+				print("undo!")
 			# ENTER
 			elif e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return:
 				self.frame.addPoly()
@@ -111,7 +109,6 @@ class MainWindow(QMainWindow):
 				self.frame.ctrlKey = False
 			elif e.key() == Qt.Key_Delete:
 				if len(self.frame.points) > 0: 
-					self.frame.undoBuff.append(list(self.frame.points))
 					self.frame.clearPoints()
 
 	def loadDir(self):

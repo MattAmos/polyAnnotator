@@ -19,7 +19,6 @@ class Frame(QFrame):
 		self.polyIndex = 0
 		self.points = []
 		self.polygons = []
-		self.undoBuff = []
 		self.currPoint = []
 		self.image = image
 		# Key variables
@@ -153,7 +152,6 @@ class Frame(QFrame):
 			self.clicked = True
 			temp = next((pt for pt in self.points if (pt[0] - x)**2 + (pt[1] - y)**2 < (SIZE + SIZE)**2), [])
 			if temp != []:
-				self.undoBuff.append(list(self.points))
 				# print(temp)
 				self.oldPt = temp
 
@@ -163,7 +161,6 @@ class Frame(QFrame):
 			y = e.y()
 			self.clicked = False
 			# if self.oldPt != []:
-			# 	self.undoBuff.append(list(self.points))
 
 			if self.shiftKey:
 				temp = [z for z in self.points if (z[0] - x)**2 + (z[1] - y)**2 > (SIZE + SIZE)**2]

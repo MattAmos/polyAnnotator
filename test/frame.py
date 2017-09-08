@@ -6,8 +6,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-SIZE = 5
-UNDO_SIZE = 20
+SIZE = 10
+BRUSH_SIZE = 5
+UNDO_SIZE = 10
 
 ##### GENERIC FRAME CLASS #####
 class Frame(QFrame):
@@ -37,7 +38,7 @@ class Frame(QFrame):
 		self.setMouseTracking(True)
 
 		self.center()
-		self.setWindowTitle('Poly Annotator v0.01')
+		self.setWindowTitle('Poly Annotator v0.02')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
 		self.setGeometry(0, 0, self.image.width(), self.image.height())
@@ -46,7 +47,13 @@ class Frame(QFrame):
 	def getQPoints(self, pointsList):
 		qPoints = []
 		for i in range(len(pointsList)):
-			qPoints += [QPoint(pointsList[i][0], pointsList[i][1])]  
+			x = pointsList[i][0] + BRUSH_SIZE/2.0
+			y = pointsList[i][1] - BRUSH_SIZE/2.0
+			if x < 0 : x = 0
+			if y < 0 : y = 0
+			if x > self.image.width() : x = self.image.width()
+			if y > self.image.height() : y = self.image.height()
+			qPoints += [QPoint(x, y)]  
 		return qPoints
 
 	def selectPoly(self, offset):
@@ -83,7 +90,7 @@ class Frame(QFrame):
 		qp.begin(self)
 		self.draw(qp)
 		qp.end()
-		self.setWindowTitle('Poly Annotator v0.01')
+		self.setWindowTitle('Poly Annotator v0.02')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
 		self.update()
@@ -108,12 +115,17 @@ class Frame(QFrame):
 				qp.drawPolygon(QPolygon(qPoints))
 				count += 1
 		# Then draw all points
-		qp.setPen(QPen(Qt.white, SIZE, Qt.SolidLine))
+		qp.setPen(QPen(Qt.white, BRUSH_SIZE, Qt.SolidLine))
 		size = self.size()
 		qPoints = self.getQPoints(self.points)
 		for pt in self.points:
-			qp.drawEllipse(pt[0], pt[1], SIZE, SIZE)
+			qp.drawEllipse(pt[0], pt[1], BRUSH_SIZE, BRUSH_SIZE)
 		qp.setPen(QPen(Qt.red, 1, Qt.SolidLine))
+		qp.drawPolygon(QPolygon(qPoints))
+
+		color.setHsl(255, 255, 255, 127)
+		brush.setColor(color)
+		qp.setBrush(brush)
 		qp.drawPolygon(QPolygon(qPoints))
 
 	def center(self):
@@ -150,8 +162,8 @@ class Frame(QFrame):
 			x = e.x()
 			y = e.y()
 			self.clicked = False
-			if self.oldPt != []:
-				self.undoBuff.append(list(self.points))
+			# if self.oldPt != []:
+			# 	self.undoBuff.append(list(self.points))
 
 			if self.shiftKey:
 				temp = [z for z in self.points if (z[0] - x)**2 + (z[1] - y)**2 > (SIZE + SIZE)**2]
@@ -163,16 +175,23 @@ class Frame(QFrame):
 				minDist = -1
 				index = -1
 				if len(self.points) > 0:
-					minDist = (self.points[0][0] - x)**2 + (self.points[0][1] - y)**2
+					minDist = abs((self.points[0][0] - x)**2 + (self.points[0][1] - y)**2)
 					index = 0
 					i = 0
 					for pt in self.points:
-						dist = (pt[0] - x)**2 + (pt[1] - y)**2
+						dist = abs((pt[0] - x)**2 + (pt[1] - y)**2)
 						if dist < minDist:
 							minDist = dist
 							index = i
 						i += 1 
-					self.points.insert(index + 1, [x, y])
+					if index > 0 and index < len(self.points) - 1:
+						left = abs((self.points[index - 1][0] - x)**2 + (self.points[index - 1][1] - y)**2) 
+						right = abs((self.points[index + 1][0] - x)**2 + (self.points[index + 1][1] - y)**2)
+						if left < right:
+							index -= 1
+						elif right < left:
+							index += 1
+					self.points.insert(index, [x, y])
 				else:
 					self.points += [[x, y]]
 			self.oldPt = []

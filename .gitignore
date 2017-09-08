@@ -21,6 +21,7 @@
 
 # Logs and databases #
 ######################
+*.json
 *.log
 *.sql
 *.sqlite

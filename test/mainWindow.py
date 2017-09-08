@@ -1,7 +1,8 @@
 #! python3
 #! PY_PYTHON=3
 
-import sys
+import sys, json
+import os.path
 from os import listdir
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -54,7 +55,7 @@ class MainWindow(QMainWindow):
 			screen = QDesktopWidget().screenGeometry()
 			self.setGeometry(0, 0, 0.6*screen.width(), 0.6*screen.height())
 		
-		self.setWindowTitle('Poly Annotator v0.01')
+		self.setWindowTitle('Poly Annotator v0.02')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
 
@@ -68,12 +69,7 @@ class MainWindow(QMainWindow):
 		self.move((screen.width()-size.width())/2, (screen.height()-size.height())/2)		
 
 	def keyPressEvent(self, e):
-		if e.key() == Qt.Key_Shift:
-			print("Shift down")
-			self.frame.shiftKey = True
-		elif e.key() == Qt.Key_Control:
-			self.frame.ctrlKey = True
-		elif e.key() == Qt.Key_Comma:
+		if e.key() == Qt.Key_Comma:
 			self.savePoly()
 			self.currIndex -= 1
 			self.getNewFrame()
@@ -82,14 +78,20 @@ class MainWindow(QMainWindow):
 			self.currIndex += 1
 			self.getNewFrame()
 		if self.frame is not None:
+			if e.key() == Qt.Key_Shift:
+				self.frame.shiftKey = True
+			elif e.key() == Qt.Key_Control:
+				self.frame.ctrlKey = True
 			# CTRL + Z
-			if e.key() == Qt.Key_Z and self.frame.ctrlKey:
+			elif e.key() == Qt.Key_Z and self.frame.ctrlKey:
 				if len(self.frame.undoBuff) > 0:
 					self.frame.points = self.frame.undoBuff[-1]
 					self.frame.undoBuff = self.frame.undoBuff[:-1]
 			# ENTER
 			elif e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return:
 				self.frame.addPoly()
+				self.savePoly()
+				self.writeOutPolygons()
 			# <-
 			elif e.key() == Qt.Key_Left:
 				self.frame.selectPoly(-1)
@@ -138,16 +140,17 @@ class MainWindow(QMainWindow):
 	def updateFrame(self):
 		if self.files is not None and len(self.files) > 0:
 			self.frame = Frame(self, self.currImage)
+			if len(self.polygonPool) == 0:
+				self.readInPolygons()
 			self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
 			self.show()
 			tempPoly = next((z for z in self.polygonPool if z[0] == self.files[self.currIndex]), [])
 			if(tempPoly != []):
-				print("{0} -> {1}".format(self.files[self.currIndex], tempPoly))
 				self.frame.polygons = list(tempPoly[1])
 		else:
 			self.frame = None
 		self.setCentralWidget(self.frame)
-		self.setWindowTitle('Poly Annotator v0.01')
+		self.setWindowTitle('Poly Annotator v0.02')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
 
@@ -159,11 +162,23 @@ class MainWindow(QMainWindow):
 		action = cmenu.exec_(self.mapToGlobal(event.pos()))
 		if self.frame is not None:
 			if action == saveAct:
-				self.frame.addPoly()
+				self.writeOutPolygons()
 			elif action == clearAct:
 				self.frame.clearPoints()
 		elif action == quitAct:
 			self.closeEvent()
+
+	def writeOutPolygons(self):
+		if(len(self.polygonPool) > 0):
+			with open(self.currDir + ".json", 'w') as f:
+				json.dump(self.polygonPool, f)
+
+	def readInPolygons(self):
+		if(os.path.isfile(self.currDir + ".json")):
+			with open(self.currDir + ".json", 'r') as f:
+				temp = json.load(f)
+				if len(temp) > 0:
+					self.polygonPool = list(temp)
 
 	def closeEvent(self):
 		reply = QMessageBox.question(self, 'Message', "Are you sure you want to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

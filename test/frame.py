@@ -11,14 +11,18 @@ UNDO_SIZE = 20
 
 ##### GENERIC FRAME CLASS #####
 class Frame(QFrame):
-	def __init__(self):
+	def __init__(self, parent, image):
 		super().__init__()
+		self.parent = parent
 		# Containers
+		self.polyIndex = 0
 		self.points = []
 		self.polygons = []
 		self.undoBuff = []
 		self.currPoint = []
+		self.image = image
 		# Key variables
+		self.saved = False
 		self.shiftKey = False
 		self.ctrlKey = False
 		self.clicked = False
@@ -33,82 +37,90 @@ class Frame(QFrame):
 		self.setMouseTracking(True)
 
 		self.center()
-		self.setWindowTitle('Image Segmentation')
+		self.setWindowTitle('Poly Annotator v0.01')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
+		self.setGeometry(0, 0, self.image.width(), self.image.height())
 		self.show()
 
-	def paintEvent(self, e):
-		qp = QPainter()
-		qp.begin(self)
-		self.drawBrushes(qp)
-		self.drawPoints(qp)
-		qp.end()
-		self.update()
-
-	def getQPoints(self):
+	def getQPoints(self, pointsList):
 		qPoints = []
-		for i in range(len(self.points)):
-			qPoints += [QPoint(self.points[i][0], self.points[i][1])]  
+		for i in range(len(pointsList)):
+			qPoints += [QPoint(pointsList[i][0], pointsList[i][1])]  
 		return qPoints
 
-	def savePoly(self):
-		print("saved!")
+	def selectPoly(self, offset):
+		if len(self.polygons) == 0 and len(self.points) > 0:
+			self.polygons.append(self.points)
+		elif len(self.points) > 0:
+			self.polygons[self.polyIndex] = list(self.points)
+
+		if len(self.polygons) > 0:
+			self.polyIndex = (self.polyIndex + offset) % len(self.polygons)
+			self.points = self.polygons[self.polyIndex]
+		else:
+			self.polyIndex = 0
+			self.points = []
+
+	def addPoly(self):
+		if len(self.points) > 0:
+			self.polygons.insert(self.polyIndex, self.points)
+			self.polyIndex += 1
+			self.points = []
+
+	def delPoly(self):
+		self.polygons.remove(self.polygons[self.polyIndex])
+		self.selectPoly(-1)
 
 	def clearPoints(self):
 		self.points = []
+		if len(self.polygons) > 0:
+			self.delPoly()
 
 	### Drawing Functions ###
+	def paintEvent(self, e):
+		qp = QPainter()
+		qp.begin(self)
+		self.draw(qp)
+		qp.end()
+		self.setWindowTitle('Poly Annotator v0.01')
+		pixmap = QPixmap("icon/web.png")
+		self.setWindowIcon(QIcon(pixmap))
+		self.update()
+		self.setMouseTracking(True)
 
-	def drawPoints(self, qp):
-		qp.setPen(QPen(Qt.black, SIZE, Qt.SolidLine))
+	def draw(self, qp):
+		# First, draw the image
+		qp.drawImage(QPoint(0,0), self.image)
+		# Then draw all other polygons
+		brush = QBrush(Qt.SolidPattern)
+		color = QColor()
+		if len(self.polygons) > 0:
+			count = 0
+			for i in range(0, 360, int(360/len(self.polygons))):
+				qPoints = self.getQPoints(self.polygons[count]) 
+				h = i
+				s = 90 + random.random()*10
+				l = 50 + random.random()*10
+				color.setHsl(h, s, l, 127)
+				brush.setColor(color)
+				qp.setBrush(brush)
+				qp.drawPolygon(QPolygon(qPoints))
+				count += 1
+		# Then draw all points
+		qp.setPen(QPen(Qt.white, SIZE, Qt.SolidLine))
 		size = self.size()
-		qPoints = self.getQPoints()
+		qPoints = self.getQPoints(self.points)
 		for pt in self.points:
 			qp.drawEllipse(pt[0], pt[1], SIZE, SIZE)
 		qp.setPen(QPen(Qt.red, 1, Qt.SolidLine))
 		qp.drawPolygon(QPolygon(qPoints))
-
-	def drawBrushes(self, qp):
-		img = QImage("web.jpg")
-		# brush = QBrush(Qt.SolidPattern)
-		# brush.setTextureImage(img)
-		qp.drawImage(QPoint(0,0), img)
-
-
-		brush = QBrush(Qt.SolidPattern)
-		qPoints = self.getQPoints() 
-		brush.setColor(QColor(0, 255, 255, 240))
-		qp.drawPolygon(QPolygon(qPoints))
-
 
 	def center(self):
 		qr = self.frameGeometry()
 		cp = QDesktopWidget().availableGeometry().center()
 		qr.moveCenter(cp)
 		self.move(qr.topLeft())
-
-	def keyPressEvent(self, e):
-		if e.key() == Qt.Key_Shift:
-			print("Shift down")
-			self.shiftKey = True
-		elif e.key() == Qt.Key_Z and self.ctrlKey:
-			if len(self.undoBuff) > 0:
-				self.points = self.undoBuff[-1]
-				self.undoBuff = self.undoBuff[:-1]
-		elif e.key() == Qt.Key_Control:
-			self.ctrlKey = True
-
-	def keyReleaseEvent(self, e):
-		if e.key() == Qt.Key_Shift:
-			self.shiftKey = False
-		elif e.key() == Qt.Key_Control:
-			self.ctrlKey = False
-		elif e.key() == Qt.Key_Delete:
-			self.undoBuff.append(list(self.points))
-			self.points = []
-		elif e.key() == Qt.Key_Escape:
-			QCoreApplication.instance().quit
 
 	def mouseMoveEvent(self, e):
 		x = e.x()
@@ -121,7 +133,6 @@ class Frame(QFrame):
 				self.points.insert(index, [x, y])
 				self.oldPt = [x, y]
 			# self.newPt = [x, y]
-		self.update()
 
 	def mousePressEvent(self, e):
 		if e.button() == Qt.LeftButton:
@@ -165,5 +176,3 @@ class Frame(QFrame):
 				else:
 					self.points += [[x, y]]
 			self.oldPt = []
-			print(len(self.points))
-			print(len(self.undoBuff))

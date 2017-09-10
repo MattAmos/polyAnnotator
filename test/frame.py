@@ -166,8 +166,6 @@ class Frame(QFrame):
 				temp = [z for z in self.points if (z[0] - x)**2 + (z[1] - y)**2 > (SIZE + SIZE)**2]
 				if len(self.points) - len(temp) > 0:
 					self.points = [z for z in self.points if (z[0] - x)**2 + (z[1] - y)**2 > (SIZE + SIZE)**2]
-				else:
-					self.undoBuff = self.undoBuff[:-1]
 			else:
 				minDist = -1
 				index = -1

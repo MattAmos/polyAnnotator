@@ -136,14 +136,19 @@ class MainWindow(QMainWindow):
 
 	def updateFrame(self):
 		if self.files is not None and len(self.files) > 0:
+			copyPoly = []
+			if self.frame is not None:
+				copyPoly = list(self.frame.polygons)
 			self.frame = Frame(self, self.currImage)
 			if len(self.polygonPool) == 0:
 				self.readInPolygons()
 			self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
 			self.show()
 			tempPoly = next((z for z in self.polygonPool if z[0] == self.files[self.currIndex]), [])
-			if(tempPoly != []):
+			if tempPoly != []:
 				self.frame.polygons = list(tempPoly[1])
+			elif copyPoly != []:
+				self.frame.polygons = list(copyPoly)
 		else:
 			self.frame = None
 		self.setCentralWidget(self.frame)

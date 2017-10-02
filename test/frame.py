@@ -13,7 +13,7 @@ UNDO_SIZE = 10
 ##### GENERIC FRAME CLASS #####
 class Frame(QFrame):
 	def __init__(self, parent, image):
-		super().__init__()
+		super(Frame, self).__init__()
 		self.parent = parent
 		# Containers
 		self.polyIndex = 0
@@ -55,7 +55,7 @@ class Frame(QFrame):
 			if y < 0 : y = 0
 			if x > self.image.width() : x = self.image.width()
 			if y > self.image.height() : y = self.image.height()
-			qPoints += [QPoint(x, y)]  
+			qPoints += [QPoint(x, y)]
 		return qPoints
 
 	def selectPoly(self, offset):
@@ -106,7 +106,7 @@ class Frame(QFrame):
 		if len(self.polygons) > 0:
 			count = 0
 			for i in range(0, 360, int(360/len(self.polygons))):
-				qPoints = self.getQPoints(self.polygons[count]) 
+				qPoints = self.getQPoints(self.polygons[count])
 				h = i
 				s = 90 + random.random()*10
 				l = 50 + random.random()*10
@@ -183,9 +183,9 @@ class Frame(QFrame):
 						if dist < minDist:
 							minDist = dist
 							index = i
-						i += 1 
+						i += 1
 					if index > 0 and index < len(self.points) - 1:
-						left = abs((self.points[index - 1][0] - x)**2 + (self.points[index - 1][1] - y)**2) 
+						left = abs((self.points[index - 1][0] - x)**2 + (self.points[index - 1][1] - y)**2)
 						right = abs((self.points[index + 1][0] - x)**2 + (self.points[index + 1][1] - y)**2)
 						if left < right:
 							index -= 1
@@ -205,7 +205,7 @@ class Frame(QFrame):
 	    	self.resize(self.width()*1.1, self.height()*1.1)
 
 	def checkBoundary(self, x, y):
-		if x < 0: 
+		if x < 0:
 			x = 0
 		if x > self.width():
 			x = self.width()

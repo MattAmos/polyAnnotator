@@ -25,8 +25,10 @@ class Frame(QFrame):
 		self.saved = False
 		self.shiftKey = False
 		self.ctrlKey = False
-		self.clicked = False
+		self.leftClk = False
+		self.midClk = False
 		# Movement point variables
+		self.midClkPos = [0,0]
 		self.oldPt = []
 		self.newPt = []
 		self.initUI()
@@ -93,7 +95,7 @@ class Frame(QFrame):
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
 		self.update()
-		self.setMouseTracking(True)
+		# self.setMouseTracking(True)
 
 	def draw(self, qp):
 		# First, draw the image
@@ -136,7 +138,7 @@ class Frame(QFrame):
 	def mouseMoveEvent(self, e):
 		x = e.x()
 		y = e.y()
-		if self.clicked and self.oldPt != []:
+		if self.leftClk and self.oldPt != []:
 			temp = next((pt for pt in self.points if pt == self.oldPt), [])
 			if temp != []:
 				index = self.points.index(self.oldPt)
@@ -144,22 +146,28 @@ class Frame(QFrame):
 				self.points.insert(index, [x, y])
 				self.oldPt = [x, y]
 			# self.newPt = [x, y]
+		elif self.midClk:
+			offset = [x - self.midClkPos[0], y - self.midClkPos[1]]
+			self.move(self.x() + offset[0], self.y() + offset[1])
 
 	def mousePressEvent(self, e):
+		x = e.x()
+		y = e.y()
 		if e.button() == Qt.LeftButton:
-			x = e.x()
-			y = e.y()
-			self.clicked = True
+			self.leftClk = True
 			temp = next((pt for pt in self.points if (pt[0] - x)**2 + (pt[1] - y)**2 < (SIZE + SIZE)**2), [])
 			if temp != []:
 				# print(temp)
 				self.oldPt = temp
+		elif e.button() == Qt.MidButton:
+			self.midClk = True
+			self.midClkPos = [x,y]
 
 	def mouseReleaseEvent(self, e):
+		x = e.x()
+		y = e.y()
 		if e.button() == Qt.LeftButton:
-			x = e.x()
-			y = e.y()
-			self.clicked = False
+			self.leftClk = False
 			# if self.oldPt != []:
 
 			if self.shiftKey:
@@ -190,3 +198,11 @@ class Frame(QFrame):
 				else:
 					self.points += [[x, y]]
 			self.oldPt = []
+		elif e.button() == Qt.MidButton:
+			self.midClk = False
+
+	def wheelEvent(self, e):
+	    if(e.angleDelta().y() > 0):
+	    	self.resize(self.width()*0.9, self.height()*0.9)
+	    elif(e.angleDelta().y() < 0):
+	    	self.resize(self.width()*1.1, self.height()*1.1)

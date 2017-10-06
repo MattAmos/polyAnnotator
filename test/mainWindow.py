@@ -21,44 +21,76 @@ class MainWindow(QMainWindow):
 		self.frame = None
 		self.currIndex = 0
 		self.polygonPool = []
+		self.icon = None
+		self.helpList = [
+		"Previous frame ! ,",
+		"Next frame ! .",
+		"Previous polygon ! <-",
+		"Next polygon ! ->",
+		"Reset image ! 5",
+		"Create new point ! M1",
+		"Remove point ! SHFT + M1",
+		"Delete polygon ! DEL",
+		"Move image ! M3"
+		]
+		self.helpText = ""
+		for d in self.helpList:
+			self.helpText += '{:16} \t {:>9}'.format(d[0:d.index("!")], d[d.index("!") + 1:]) + '\n'
+		self.helpText = self.helpText[:-1]
 		self.initUI()
 
 	def initUI(self):
 		self.setCentralWidget(self.frame)
-		exitAct = QAction(QIcon("images/web.png"), '&Exit', self)
+		exitAct = QAction(QIcon("icon/exit.png"), '&Exit', self)
 		exitAct.setShortcut('Ctrl+Q')
 		exitAct.setShortcut('Escape')
 		exitAct.setStatusTip('Exit Application')
 		exitAct.triggered.connect(self.closeEvent)
 
-		loadDir = QAction(QIcon('Import directory'), '&Import', self)
+		loadDir = QAction(QIcon('icon/load.png'), '&Import', self)
 		loadDir.setShortcut('Ctrl+O')
 		loadDir.setStatusTip('Import Directory')
 		loadDir.triggered.connect(self.loadDir)
 
+		saveDir = QAction(QIcon('icon/save.png'), '&Save', self)
+		saveDir.setShortcut('Ctrl+S')
+		saveDir.setStatusTip('Save Directory')
+		saveDir.triggered.connect(self.writeOutPolygons)
+
+		helpAct = QAction(QIcon('icon/help.png'), '&Controls', self)
+		helpAct.setShortcut('Ctrl+H')
+		helpAct.setStatusTip('Controls')
+		helpAct.triggered.connect(self.showHelp)
+
 		self.toolbar = self.addToolBar('Exit')
 		self.toolbar.addAction(exitAct)
+		self.toolbar = self.addToolBar('Save')
+		self.toolbar.addAction(saveDir)
 		self.toolbar = self.addToolBar('Import')
 		self.toolbar.addAction(loadDir)
+		self.toolbar = self.addToolBar('Controls')
+		self.toolbar.addAction(helpAct)
 
 		menuBar = self.menuBar()
 		fileMenu = menuBar.addMenu('File')
+		helpMenu = menuBar.addMenu('Help')
 
+		fileMenu.addAction(saveDir)
 		fileMenu.addAction(loadDir)
 		fileMenu.addAction(exitAct)
+		helpMenu.addAction(helpAct)
 
 		self.setMouseTracking(True)
 		screen = QDesktopWidget().screenGeometry()
 		if self.currImage is not None and self.frame is not None:
-			self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
+			self.setGeometry(screen.x(), screen.y(), self.frame.image.width(), self.frame.image.height())
 		else:
 			screen = QDesktopWidget().screenGeometry()
-			self.setGeometry(0, 0, 0.6*screen.width(), 0.6*screen.height())
-		
+			self.setGeometry(screen.x(), screen.y(), 0.6*screen.width(), 0.6*screen.height())
 		self.setWindowTitle('Poly Annotator v0.02')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
-
+		self.icon = QIcon(pixmap)
 		self.center()
 		self.show()
 
@@ -82,9 +114,12 @@ class MainWindow(QMainWindow):
 				self.frame.shiftKey = True
 			elif e.key() == Qt.Key_Control:
 				self.frame.ctrlKey = True
+			elif e.key() == Qt.Key_5:
+				screen = QDesktopWidget().screenGeometry()
+				self.frame.setGeometry(screen.x(), screen.y(), self.frame.image.width(), self.frame.image.height())
 			# CTRL + Z
 			elif e.key() == Qt.Key_Z and self.frame.ctrlKey:
-				print("undo!")
+				print("[DEBUG] TODO: UNDO!")
 			# ENTER
 			elif e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return:
 				self.frame.addPoly()
@@ -142,7 +177,9 @@ class MainWindow(QMainWindow):
 			self.frame = Frame(self, self.currImage)
 			if len(self.polygonPool) == 0:
 				self.readInPolygons()
-			self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
+			screen = QDesktopWidget().screenGeometry()
+			self.setGeometry(self.x(), self.y(), self.frame.image.width(), self.frame.image.height())
+			# self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
 			self.show()
 			tempPoly = next((z for z in self.polygonPool if z[0] == self.files[self.currIndex]), [])
 			if tempPoly != []:
@@ -170,10 +207,17 @@ class MainWindow(QMainWindow):
 		elif action == quitAct:
 			self.closeEvent()
 
+	def showHelp(self):
+		msg = QMessageBox()
+		msg.setWindowTitle("Controls")
+		msg.setText(self.helpText)
+		msg.exec_()
+
 	def writeOutPolygons(self):
 		if(len(self.polygonPool) > 0):
 			with open(self.currDir + ".json", 'w') as f:
 				json.dump(self.polygonPool, f)
+				print("[LOG] Saved polygons from {} frames into {}".format(len(self.polygonPool), self.currDir + ".json"))
 
 	def readInPolygons(self):
 		if(os.path.isfile(self.currDir + ".json")):
@@ -181,6 +225,7 @@ class MainWindow(QMainWindow):
 				temp = json.load(f)
 				if len(temp) > 0:
 					self.polygonPool = list(temp)
+					print("[LOG] Read polygons from {} frames from {}".format(len(self.polygonPool), self.currDir + ".json"))
 
 	def closeEvent(self):
 		reply = QMessageBox.question(self, 'Message', "Are you sure you want to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

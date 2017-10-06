@@ -27,6 +27,7 @@ class Frame(QFrame):
 		self.ctrlKey = False
 		self.leftClk = False
 		self.midClk = False
+		self.modified = False
 		# Movement point variables
 		self.midClkPos = [0,0]
 		self.oldPt = []
@@ -35,14 +36,14 @@ class Frame(QFrame):
 
 	def initUI(self):
 		self.setFocusPolicy(Qt.StrongFocus)
-		QToolTip.setFont(QFont('SansSerif', 10))
+		QToolTip.setFont(QFont('Serif', 10))
 		self.setMouseTracking(True)
 
 		self.center()
-		self.setWindowTitle('Poly Annotator v0.02')
+		self.setWindowTitle('Poly Annotator v0.03')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
-		self.setGeometry(0, 0, self.image.width(), self.image.height())
+		self.setGeometry(self.parent.x(), self.parent.y(), self.image.width(), self.image.height())
 		self.show()
 
 	def getQPoints(self, pointsList):
@@ -72,15 +73,18 @@ class Frame(QFrame):
 
 	def addPoly(self):
 		if len(self.points) > 0:
+			self.modified = True
 			self.polygons.insert(self.polyIndex, self.points)
 			self.polyIndex += 1
 			self.points = []
 
 	def delPoly(self):
+		self.modified = True
 		self.polygons.remove(self.polygons[self.polyIndex])
 		self.selectPoly(-1)
 
 	def clearPoints(self):
+		self.modified = True
 		self.points = []
 		if len(self.polygons) > 0:
 			self.delPoly()
@@ -91,11 +95,7 @@ class Frame(QFrame):
 		qp.begin(self)
 		self.draw(qp)
 		qp.end()
-		self.setWindowTitle('Poly Annotator v0.02')
-		pixmap = QPixmap("icon/web.png")
-		self.setWindowIcon(QIcon(pixmap))
 		self.update()
-		# self.setMouseTracking(True)
 
 	def draw(self, qp):
 		# First, draw the image
@@ -207,14 +207,10 @@ class Frame(QFrame):
 	def checkBoundary(self, x, y):
 		if x < 0: 
 			x = 0
-			print("x < 0")
 		if x > self.width():
 			x = self.width()
-			print("x > width")
 		if y < 0:
 			y = 0
-			print("y < 0")
 		if y > self.height():
 			y = self.height()
-			print("y > height")
 		return [x,y]

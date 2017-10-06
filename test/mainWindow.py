@@ -9,7 +9,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from frame import Frame
 
-
 ##### MAIN WINDOW CLASS #####
 class MainWindow(QMainWindow):
 	def __init__(self):
@@ -24,19 +23,19 @@ class MainWindow(QMainWindow):
 		self.polygonPool = []
 		self.icon = None
 		self.helpList = [
-			"Previous frame ! ,",
-			"Next frame ! .",
-			"Previous polygon ! <-",
-			"Next polygon ! ->",
-			"Reset image ! 5",
-			"Create new point ! M1",
-			"Remove point ! SHFT + M1",
-			"Delete polygon ! DEL",
-			"Move image ! M3"
+			"Previous frame : ,",
+			"Next frame : .",
+			"Previous polygon : <-",
+			"Next polygon : ->",
+			"Reset image : 5",
+			"Create new point : M1",
+			"Remove point : SHIFT + M1",
+			"Delete polygon : DEL",
+			"Move image : M3"
 		]
 		self.helpText = ""
 		for d in self.helpList:
-			self.helpText += '{:16} \t {:>9}'.format(d[0:d.index("!")], d[d.index("!") + 1:]) + '\n'
+			self.helpText += '{:16} \t {:>9}'.format(d[0:d.index(":")], d[d.index(":") + 1:]) + '\n'
 		self.helpText = self.helpText[:-1]
 		self.initUI()
 
@@ -48,9 +47,9 @@ class MainWindow(QMainWindow):
 		exitAct.setStatusTip('Exit Application')
 		exitAct.triggered.connect(self.closeEvent)
 
-		loadDir = QAction(QIcon('icon/load.png'), '&Import', self)
+		loadDir = QAction(QIcon('icon/load.png'), '&Load', self)
 		loadDir.setShortcut('Ctrl+O')
-		loadDir.setStatusTip('Import Directory')
+		loadDir.setStatusTip('Load Directory')
 		loadDir.triggered.connect(self.loadDir)
 
 		saveDir = QAction(QIcon('icon/save.png'), '&Save', self)
@@ -67,7 +66,7 @@ class MainWindow(QMainWindow):
 		self.toolbar.addAction(exitAct)
 		self.toolbar = self.addToolBar('Save')
 		self.toolbar.addAction(saveDir)
-		self.toolbar = self.addToolBar('Import')
+		self.toolbar = self.addToolBar('Load')
 		self.toolbar.addAction(loadDir)
 		self.toolbar = self.addToolBar('Controls')
 		self.toolbar.addAction(helpAct)
@@ -87,7 +86,7 @@ class MainWindow(QMainWindow):
 			self.setGeometry(self.screen.x(), self.screen.y(), self.frame.image.width(), self.frame.image.height())
 		else:
 			self.setGeometry(self.screen.x(), self.screen.y(), 0.6*self.screen.width(), 0.6*self.screen.height())
-		self.setWindowTitle('Poly Annotator v0.02')
+		self.setWindowTitle('Poly Annotator v0.03')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
 		self.icon = QIcon(pixmap)
@@ -100,19 +99,24 @@ class MainWindow(QMainWindow):
 		self.move((self.screen.width()-size.width())/2, (self.screen.height()-size.height())/2)		
 
 	def keyPressEvent(self, e):
+		# ,
 		if e.key() == Qt.Key_Comma:
 			self.savePoly()
 			self.currIndex -= 1
 			self.getNewFrame()
+		# . 
 		elif e.key() == Qt.Key_Period:
 			self.savePoly()
 			self.currIndex += 1
 			self.getNewFrame()
 		if self.frame is not None:
+			# SHIFT
 			if e.key() == Qt.Key_Shift:
 				self.frame.shiftKey = True
+			# CTRL
 			elif e.key() == Qt.Key_Control:
 				self.frame.ctrlKey = True
+			# 5
 			elif e.key() == Qt.Key_5:
 				self.frame.setGeometry(self.screen.x(), self.screen.y(), self.frame.image.width(), self.frame.image.height())
 			# CTRL + Z
@@ -129,6 +133,9 @@ class MainWindow(QMainWindow):
 			# ->
 			elif e.key() == Qt.Key_Right:
 				self.frame.selectPoly(1)
+			elif e.key() == Qt.Key_Delete:
+				if len(self.frame.points) > 0: 
+					self.frame.clearPoints()
 		elif e.key() == Qt.Key_Escape:
 			self.quit()
 
@@ -140,9 +147,6 @@ class MainWindow(QMainWindow):
 				self.frame.shiftKey = False
 			elif e.key() == Qt.Key_Control:
 				self.frame.ctrlKey = False
-			elif e.key() == Qt.Key_Delete:
-				if len(self.frame.points) > 0: 
-					self.frame.clearPoints()
 
 	def loadDir(self):
 		self.currDir = self.dialog.getExistingDirectory(self, 'Select image directory')
@@ -151,8 +155,7 @@ class MainWindow(QMainWindow):
 	
 	def savePoly(self):
 		if self.frame is not None and len(self.frame.polygons) > 0:
-			index = -1
-			count = 0
+			index = -1; count = 0
 			for p in self.polygonPool:
 				if p[0] == self.files[self.currIndex]:
 					index = count
@@ -161,7 +164,8 @@ class MainWindow(QMainWindow):
 				count += 1
 			if index == -1:
 				self.polygonPool.append([self.files[self.currIndex], list(self.frame.polygons)])
-			self.writeOutPolygons()
+			if self.frame.modified:
+				self.writeOutPolygons()
 
 	def getNewFrame(self):
 		self.currIndex = self.currIndex % len(self.files)		
@@ -177,7 +181,6 @@ class MainWindow(QMainWindow):
 			if len(self.polygonPool) == 0:
 				self.readInPolygons()
 			self.setGeometry(self.x(), self.y(), self.frame.image.width(), self.frame.image.height())
-			# self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
 			self.show()
 			tempPoly = next((z for z in self.polygonPool if z[0] == self.files[self.currIndex]), [])
 			if tempPoly != []:
@@ -187,28 +190,15 @@ class MainWindow(QMainWindow):
 		else:
 			self.frame = None
 		self.setCentralWidget(self.frame)
-		self.setWindowTitle('Poly Annotator v0.02')
+		self.setWindowTitle('Poly Annotator v0.03')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
-
-	def contextMenuEvent(self, event):
-		cmenu = QMenu(self)
-		saveAct = cmenu.addAction("Save")
-		clearAct = cmenu.addAction("Clear")
-		quitAct = cmenu.addAction("Quit")
-		action = cmenu.exec_(self.mapToGlobal(event.pos()))
-		if self.frame is not None:
-			if action == saveAct:
-				self.writeOutPolygons()
-			elif action == clearAct:
-				self.frame.clearPoints()
-		elif action == quitAct:
-			self.closeEvent()
 
 	def showHelp(self):
 		msg = QMessageBox()
 		msg.setWindowTitle("Controls")
 		msg.setText(self.helpText)
+		msg.move((self.screen.width() - msg.width())/2, (self.screen.height() - msg.height())/2)		
 		msg.exec_()
 
 	def writeOutPolygons(self):

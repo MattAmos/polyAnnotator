@@ -15,6 +15,7 @@ class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
 		self.dialog = QFileDialog(self)
+		self.screen = None
 		self.currDir = None
 		self.files = None
 		self.currImage = None
@@ -23,15 +24,15 @@ class MainWindow(QMainWindow):
 		self.polygonPool = []
 		self.icon = None
 		self.helpList = [
-		"Previous frame ! ,",
-		"Next frame ! .",
-		"Previous polygon ! <-",
-		"Next polygon ! ->",
-		"Reset image ! 5",
-		"Create new point ! M1",
-		"Remove point ! SHFT + M1",
-		"Delete polygon ! DEL",
-		"Move image ! M3"
+			"Previous frame ! ,",
+			"Next frame ! .",
+			"Previous polygon ! <-",
+			"Next polygon ! ->",
+			"Reset image ! 5",
+			"Create new point ! M1",
+			"Remove point ! SHFT + M1",
+			"Delete polygon ! DEL",
+			"Move image ! M3"
 		]
 		self.helpText = ""
 		for d in self.helpList:
@@ -81,12 +82,11 @@ class MainWindow(QMainWindow):
 		helpMenu.addAction(helpAct)
 
 		self.setMouseTracking(True)
-		screen = QDesktopWidget().screenGeometry()
+		self.screen = QDesktopWidget().screenGeometry()
 		if self.currImage is not None and self.frame is not None:
-			self.setGeometry(screen.x(), screen.y(), self.frame.image.width(), self.frame.image.height())
+			self.setGeometry(self.screen.x(), self.screen.y(), self.frame.image.width(), self.frame.image.height())
 		else:
-			screen = QDesktopWidget().screenGeometry()
-			self.setGeometry(screen.x(), screen.y(), 0.6*screen.width(), 0.6*screen.height())
+			self.setGeometry(self.screen.x(), self.screen.y(), 0.6*self.screen.width(), 0.6*self.screen.height())
 		self.setWindowTitle('Poly Annotator v0.02')
 		pixmap = QPixmap("icon/web.png")
 		self.setWindowIcon(QIcon(pixmap))
@@ -96,9 +96,8 @@ class MainWindow(QMainWindow):
 
 	def center(self):
 		'''centers the window on the screen'''
-		screen = QDesktopWidget().screenGeometry()
 		size = self.geometry()
-		self.move((screen.width()-size.width())/2, (screen.height()-size.height())/2)		
+		self.move((self.screen.width()-size.width())/2, (self.screen.height()-size.height())/2)		
 
 	def keyPressEvent(self, e):
 		if e.key() == Qt.Key_Comma:
@@ -115,8 +114,7 @@ class MainWindow(QMainWindow):
 			elif e.key() == Qt.Key_Control:
 				self.frame.ctrlKey = True
 			elif e.key() == Qt.Key_5:
-				screen = QDesktopWidget().screenGeometry()
-				self.frame.setGeometry(screen.x(), screen.y(), self.frame.image.width(), self.frame.image.height())
+				self.frame.setGeometry(self.screen.x(), self.screen.y(), self.frame.image.width(), self.frame.image.height())
 			# CTRL + Z
 			elif e.key() == Qt.Key_Z and self.frame.ctrlKey:
 				print("[DEBUG] TODO: UNDO!")
@@ -163,6 +161,7 @@ class MainWindow(QMainWindow):
 				count += 1
 			if index == -1:
 				self.polygonPool.append([self.files[self.currIndex], list(self.frame.polygons)])
+			self.writeOutPolygons()
 
 	def getNewFrame(self):
 		self.currIndex = self.currIndex % len(self.files)		
@@ -177,7 +176,6 @@ class MainWindow(QMainWindow):
 			self.frame = Frame(self, self.currImage)
 			if len(self.polygonPool) == 0:
 				self.readInPolygons()
-			screen = QDesktopWidget().screenGeometry()
 			self.setGeometry(self.x(), self.y(), self.frame.image.width(), self.frame.image.height())
 			# self.setGeometry(0, 0, self.frame.image.width(), self.frame.image.height())
 			self.show()
@@ -225,7 +223,7 @@ class MainWindow(QMainWindow):
 				temp = json.load(f)
 				if len(temp) > 0:
 					self.polygonPool = list(temp)
-					print("[LOG] Read polygons from {} frames from {}".format(len(self.polygonPool), self.currDir + ".json"))
+					print("[LOG] Read polygons data of {} frames from {}".format(len(self.polygonPool), self.currDir + ".json"))
 
 	def closeEvent(self):
 		reply = QMessageBox.question(self, 'Message', "Are you sure you want to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

@@ -136,8 +136,7 @@ class Frame(QFrame):
 		self.move(qr.topLeft())
 
 	def mouseMoveEvent(self, e):
-		x = e.x()
-		y = e.y()
+		[x,y] = self.checkBoundary(e.x(),e.y())
 		if self.leftClk and self.oldPt != []:
 			temp = next((pt for pt in self.points if pt == self.oldPt), [])
 			if temp != []:
@@ -151,8 +150,7 @@ class Frame(QFrame):
 			self.move(self.x() + offset[0], self.y() + offset[1])
 
 	def mousePressEvent(self, e):
-		x = e.x()
-		y = e.y()
+		[x,y] = self.checkBoundary(e.x(),e.y())
 		if e.button() == Qt.LeftButton:
 			self.leftClk = True
 			temp = next((pt for pt in self.points if (pt[0] - x)**2 + (pt[1] - y)**2 < (SIZE + SIZE)**2), [])
@@ -164,8 +162,7 @@ class Frame(QFrame):
 			self.midClkPos = [x,y]
 
 	def mouseReleaseEvent(self, e):
-		x = e.x()
-		y = e.y()
+		[x,y] = self.checkBoundary(e.x(),e.y())
 		if e.button() == Qt.LeftButton:
 			self.leftClk = False
 			# if self.oldPt != []:
@@ -206,3 +203,18 @@ class Frame(QFrame):
 	    	self.resize(self.width()*0.9, self.height()*0.9)
 	    elif(e.angleDelta().y() < 0):
 	    	self.resize(self.width()*1.1, self.height()*1.1)
+
+	def checkBoundary(self, x, y):
+		if x < 0: 
+			x = 0
+			print("x < 0")
+		if x > self.width():
+			x = self.width()
+			print("x > width")
+		if y < 0:
+			y = 0
+			print("y < 0")
+		if y > self.height():
+			y = self.height()
+			print("y > height")
+		return [x,y]

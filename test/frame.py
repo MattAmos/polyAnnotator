@@ -193,7 +193,7 @@ class Frame(QFrame):
             self.points = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
             self.polygons[self.polyIndex] = self.points
 
-        if self.clicked and self.oldPt != []:
+        if self.leftClk and self.oldPt != []:
             temp = next((pt for pt in self.points if pt == self.oldPt), [])
             if temp != []:
                 index = self.points.index(self.oldPt)
@@ -210,7 +210,7 @@ class Frame(QFrame):
         if e.button() == Qt.LeftButton:
             [x,y] = self.checkBoundary(e.x(),e.y())
 
-            self.clicked = True
+            self.leftClk = True
             temp = next((pt for pt in self.points if self.getSquaredDistance(pt, [x, y]) < (SIZE + SIZE)**2), [])
             if temp != []:
                 # print(temp)
@@ -223,7 +223,7 @@ class Frame(QFrame):
         if e.button() == Qt.LeftButton:
             [x,y] = self.checkBoundary(e.x(),e.y())
 
-            self.clicked = False
+            self.leftClk = False
             # if self.oldPt != []:
 
             # Delete point from polygon

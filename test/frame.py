@@ -149,7 +149,7 @@ class Frame(QFrame):
         [x,y] = self.checkBoundary(e.x(),e.y())
 
         # Translate polygon
-        if self.altKey and self.shiftKey and e.buttons() == Qt.LeftButton and len(self.points) > 0:
+        if self.altKey and self.shiftKey and self.leftClk and len(self.points) > 0:
             # Find center of polygon
             c = [0.0, 0.0]
 
@@ -166,7 +166,7 @@ class Frame(QFrame):
             self.polygons[self.polyIndex] = self.points
 
         # Polygon is a rectangle ... translate an individual point while maintaining the rectangular shape
-        elif self.altKey and e.buttons() == Qt.LeftButton and len(self.points) == 4:
+        elif self.altKey and self.leftClk and len(self.points) == 4:
             p1 = self.points[0]
             p2 = self.points[1]
             p3 = self.points[2]
@@ -193,7 +193,7 @@ class Frame(QFrame):
             self.points = [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
             self.polygons[self.polyIndex] = self.points
 
-        if self.leftClk and self.oldPt != []:
+        elif self.leftClk and self.oldPt != []:
             temp = next((pt for pt in self.points if pt == self.oldPt), [])
             if temp != []:
                 index = self.points.index(self.oldPt)
@@ -224,7 +224,6 @@ class Frame(QFrame):
             [x,y] = self.checkBoundary(e.x(),e.y())
 
             self.leftClk = False
-            # if self.oldPt != []:
 
             # Delete point from polygon
             if self.shiftKey and not self.altKey:

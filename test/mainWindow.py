@@ -128,6 +128,7 @@ class MainWindow(QMainWindow):
         self.move((self.screen.width()-size.width())/2, (self.screen.height()-size.height())/2)
 
     def keyPressEvent(self, e):
+        modifiers = e.modifiers()
         # ,
         if e.key() == Qt.Key_Comma:
             self.savePoly()
@@ -165,10 +166,14 @@ class MainWindow(QMainWindow):
             if e.key() == Qt.Key_Shift:
                 self.frame.shiftKey = True
             # CTRL
-            elif e.key() == Qt.Key_Control:
+            if e.key() == Qt.Key_Control:
                 self.frame.ctrlKey = True
+            # ATL
+            if e.key() == Qt.Key_Alt:
+                self.frame.altKey = True
+
             # 5
-            elif e.key() == Qt.Key_5:
+            if e.key() == Qt.Key_5:
                 self.frame.setGeometry(self.screen.x(), self.screen.y(), self.frame.image.width(), self.frame.image.height())
             # CTRL + Z
             elif e.key() == Qt.Key_Z and self.frame.ctrlKey:
@@ -192,9 +197,12 @@ class MainWindow(QMainWindow):
         if self.frame is not None:
             if e.key() == Qt.Key_Shift:
                 self.frame.shiftKey = False
-            elif e.key() == Qt.Key_Control:
+            if e.key() == Qt.Key_Control:
                 self.frame.ctrlKey = False
-            elif e.key() == Qt.Key_Delete:
+            if e.key() == Qt.Key_Alt:
+                self.frame.altKey = False
+
+            if e.key() == Qt.Key_Delete:
                 if len(self.frame.points) > 0:
                     self.frame.clearPoints()
                     self.savePoly()
@@ -371,12 +379,12 @@ class MainWindow(QMainWindow):
             QCoreApplication.instance().quit()
 
     def setScreenGeometry(self):
-        screen = QDesktopWidget().availableGeometry()
-        width = 0.6 * screen.width()
-        height = 0.6 * screen.height()
+        self.screen = QDesktopWidget().availableGeometry()
+        width = 0.6 * self.screen.width()
+        height = 0.6 * self.screen.height()
 
         if self.currImage is not None and self.frame is not None:
-            width = self.frame.image.width() if self.frame.image.width() < (0.9 * screen.width()) else screen.width()
-            height = self.frame.image.height() if self.frame.image.height() < (0.9 * screen.height()) else screen.height()
+            width = self.frame.image.width() if self.frame.image.width() < (0.9 * self.screen.width()) else self.screen.width()
+            height = self.frame.image.height() if self.frame.image.height() < (0.9 * self.screen.height()) else self.screen.height()
 
-        self.setGeometry(self.x(), self.y(), width, height)
+        self.setGeometry(self.screen.x(), self.screen.y(), width, height)

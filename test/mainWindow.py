@@ -143,7 +143,8 @@ class MainWindow(QMainWindow):
                     self.videoFrame -= 1
             else:
                 self.currIndex -= 1
-            self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
+            if self.videoFrame is not None and self.videoNumFrames is not None:
+                self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
             self.getNewFrame()
         # .
         elif e.key() == Qt.Key_Period:
@@ -159,7 +160,8 @@ class MainWindow(QMainWindow):
                     self.videoFrame += 1
             else:
                 self.currIndex += 1
-            self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
+            if self.videoFrame is not None and self.videoNumFrames is not None:
+                self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
             self.getNewFrame()
         if self.frame is not None:
             # SHIFT
@@ -193,7 +195,7 @@ class MainWindow(QMainWindow):
 
     def keyReleaseEvent(self, e):
         if e.key() == Qt.Key_Escape:
-            self.quit()
+            self.closeEvent()
         if self.frame is not None:
             if e.key() == Qt.Key_Shift:
                 self.frame.shiftKey = False

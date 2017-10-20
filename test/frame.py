@@ -163,7 +163,11 @@ class Frame(QFrame):
 
             # Translate the polygon
             self.points = [[int(pt[0] - dist[0]), int(pt[1] - dist[1])] for pt in self.points]
-            self.polygons[self.polyIndex] = self.points
+            # Check for cleared polygon list
+            if self.polyIndex < len(self.polygons):
+                self.polygons[self.polyIndex] = self.points
+            else:
+                self.polygons[0] = self.points
 
         # Polygon is a rectangle ... translate an individual point while maintaining the rectangular shape
         elif self.altKey and self.leftClk and len(self.points) == 4:

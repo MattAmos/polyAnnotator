@@ -1,5 +1,4 @@
-#! /usr/bin/env python3
-#! PY_PYTHON=3
+#! /usr/bin/env python2
 
 import sys, json
 import os.path
@@ -10,6 +9,7 @@ from PyQt5.QtGui import *
 from frame import Frame
 import cv2
 import numpy as np
+import video_pb2
 
 ##### MAIN WINDOW CLASS #####
 class MainWindow(QMainWindow):
@@ -22,6 +22,10 @@ class MainWindow(QMainWindow):
         self.currImage = None
         self.frame = None
         self.currIndex = 0
+        # Dictionary entires for annotations and frames for reference
+        # annoDict  = {'p' : [], 'label' : ''}
+        # frameDict = {'annotation' : {}, 'frameNo' : -1}
+        self.videoDict = {'frame' : [], 'path' : '', 'width' : -1, 'height' : -1}
         self.polygonPool = []
         self.polygonCount = None
         self.icon = None
@@ -46,6 +50,8 @@ class MainWindow(QMainWindow):
         self.videoFrame = 0
         self.videoNumFrames = None
         self.imageCount = None
+
+        self.poly_video = None
         self.initUI()
 
     def initUI(self):
@@ -166,13 +172,13 @@ class MainWindow(QMainWindow):
         if self.frame is not None:
             # SHIFT
             if e.key() == Qt.Key_Shift:
-                self.frame.shiftKey = True
+                self.frame.keys.SHIFT = True
             # CTRL
             if e.key() == Qt.Key_Control:
-                self.frame.ctrlKey = True
-            # ATL
+                self.frame.keys.CTRL = True
+            # ALT
             if e.key() == Qt.Key_Alt:
-                self.frame.altKey = True
+                self.frame.keys.ALT = True
 
             # 5
             if e.key() == Qt.Key_5:
@@ -198,11 +204,11 @@ class MainWindow(QMainWindow):
             self.closeEvent()
         if self.frame is not None:
             if e.key() == Qt.Key_Shift:
-                self.frame.shiftKey = False
+                self.frame.keys.SHIFT = False
             if e.key() == Qt.Key_Control:
-                self.frame.ctrlKey = False
+                self.frame.keys.CTRL = False
             if e.key() == Qt.Key_Alt:
-                self.frame.altKey = False
+                self.frame.keys.ALT = False
 
             if e.key() == Qt.Key_Delete:
                 if len(self.frame.points) > 0:
@@ -308,25 +314,35 @@ class MainWindow(QMainWindow):
 
     def updateFrame(self):
         if self.useVideo or (self.files is not None and len(self.files) > 0):
-            copyPoly = []
+            copyFrame = {}
             if self.frame is not None:
-                copyPoly = list(self.frame.polygons)
+                copyFrame = self.frame.frameDict
             self.frame = Frame(self, self.currImage)
-            if len(self.polygonPool) == 0 or self.useVideo:
+            if len(self.videoDict["frame"]) == 0 or self.useVideo:
                 self.readInPolygons()
 
             self.setScreenGeometry()
             self.show()
 
-            tempPoly = next((z for z in self.polygonPool if z[0] == self.files[self.currIndex]), [])
+            tempFrame = {}
 
-            if tempPoly != []:
-                self.statusBar.showMessage('Polygons loaded from file')
-                self.frame.polygons = list(tempPoly[2])
-            elif copyPoly != []:
-                self.statusBar.showMessage('Polygons copied from previous frame')
-                self.frame.polygons = list(copyPoly)
-            self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.polygons)))
+            for i in range(0, len(self.videoDict["frame"])): # each frame
+                if('{0:015d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
+                    print('{0:015d}.{1} == {2}'.format(self.videoDict["frame"][i]["frameNo"], "JPG", self.files[self.currIndex]))
+                    tempFrame = self.videoDict["frame"][i]
+                    print(tempFrame)
+                    break
+
+            if tempFrame != {}:
+                self.statusBar.showMessage('Frame loaded from file')
+                self.frame.frameDict = tempFrame
+            elif copyFrame != {}:
+                self.statusBar.showMessage('Frame copied from previous frame')
+                tempFrameNo = copyFrame["frameNo"]
+                self.frame.frameDict = copyFrame
+                copyFrame["frameNo"] = tempFrameNo
+            if self.frame.frameDict != {}:
+                self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
         else:
             self.frame = None
 
@@ -343,7 +359,7 @@ class MainWindow(QMainWindow):
         msg.exec_()
 
     def writeOutPolygons(self):
-        if(len(self.polygonPool) > 0):
+        if(len(self.videoDict) > 0):
             if self.useVideo:
                 outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
                 outputFile = '{0}_{1:010d}.{2}'.format(os.path.splitext(outputFile)[0], self.videoFrame, "json")
@@ -352,25 +368,53 @@ class MainWindow(QMainWindow):
                 outputFile = '{0}.{1}'.format(os.path.splitext(outputFile)[0], "json")
 
             with open(outputFile, 'w') as f:
-                json.dump(self.polygonPool, f)
+                json.dump(self.videoDict, f)
 
-            self.statusBar.showMessage('Successfully saved {0} polygons to file {1}'.format(len(self.polygonPool), outputFile))
+            self.statusBar.showMessage('Successfully saved {0} frames to file {1}'.format(len(self.videoDict["frame"]), outputFile))
 
     def readInPolygons(self):
+        # self.protoReadInPolygons()
+
         if self.useVideo:
             inputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
             inputFile = '{0}_{1:010d}.{2}'.format(os.path.splitext(inputFile)[0], self.videoFrame, "json")
         else:
             inputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
-            inputFile = '{0}.{1}'.format(os.path.splitext(inputFile)[0], "json")
-
+            inputFile = '{0}.{1}'.format(self.jsonDir, "json")
+        print('{}'.format(inputFile));
         if(os.path.isfile(inputFile)):
             with open(inputFile, 'r') as f:
                 temp = json.load(f)
                 if len(temp) > 0:
-                    self.polygonPool = list(temp)
+                    self.printVideoDict(temp)
+                    # print(temp["frame"])
+                    self.videoDict = temp
 
-            self.statusBar.showMessage('Successfully loaded {0} polygons from file {1}'.format(len(self.polygonPool), inputFile))
+            self.statusBar.showMessage('Successfully loaded {0} frames from file {1}'.format(len(self.videoDict["frame"]), inputFile))
+
+    def printVideoDict(self, temp):
+        print('{0}, {1}x{2}'.format(temp["path"], temp["width"], temp["height"]))
+        for i in range(0, len(temp["frame"])):
+            print('FrameNo: {0}'.format(temp["frame"][i]["frameNo"]))
+            for j in range(0, len(temp["frame"][i]["annotation"])):
+                print('\tAnnotation: {0}'.format(temp["frame"][i]["annotation"][j]["label"]))
+                for k in range(0, len(temp["frame"][i]["annotation"][j]["p"])):
+                    print('\t\t{0}, {1}'.format(temp["frame"][i]["annotation"][j]["p"][k]["x"], temp["frame"][i]["annotation"][j]["p"][k]["y"]))
+        # print(temp["frame"])
+
+    def protoReadInPolygons(self):
+        # Instead of self.jsonDir we want to read in {VIDEO FILENAME}.proto and the images from {VIDEO FILENAME}
+        print('{}.{}'.format(self.jsonDir, "proto"))
+        inputFile = '{0}.{1}'.format(self.jsonDir, "proto")
+        
+        if(os.path.isfile(inputFile)):
+            with open(inputFile, 'r') as f:
+                self.poly_video = video_pb2.Video()
+                self.poly_video.ParseFromString(f.read())
+
+            f.close()
+            print('{}'.format(self.poly_video.__str__()))
+
 
     def closeEvent(self):
         reply = QMessageBox.question(self, 'Message', "Are you sure you want to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

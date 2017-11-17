@@ -1,5 +1,4 @@
 #! /usr/bin/env python2
-#! PY_PYTHON=3
 
 import sys
 from PyQt5.QtWidgets import QApplication

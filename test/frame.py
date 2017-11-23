@@ -111,6 +111,17 @@ class Frame(QFrame):
 
         return index
 
+    def quickHull(self, s):
+        cHull = []
+        if len(s) > 0:
+            left = {}
+            right = {}
+            for p in s:
+                if left is {} or p["x"] < left["x"]:
+                    left = p
+                if right is {} or p["x"] > right["x"]:
+                    right = p
+            v = {"x" : left["x"] - right["x"], "y" : left["y"] - right["y"]}
     ### Points Functions ###
 
     def clearPoints(self):

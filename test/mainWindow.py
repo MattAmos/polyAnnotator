@@ -129,7 +129,6 @@ class MainWindow(QMainWindow):
         self.show()
 
     def center(self):
-        '''centers the window on the screen'''
         size = self.geometry()
         self.move((self.screen.width()-size.width())/2, (self.screen.height()-size.height())/2)
 
@@ -236,7 +235,7 @@ class MainWindow(QMainWindow):
         if self.capture and self.capture.isOpened():
             self.capture.release()
 
-        self.statusBar.showMessage('Loading an video')
+        self.statusBar.showMessage('Loading a video')
         self.currVideo, filter = QFileDialog.getOpenFileName(self, 'Select video')
         if os.path.isfile(self.currVideo):
             self.imageDir = os.path.dirname(os.path.abspath(self.currVideo))
@@ -265,17 +264,18 @@ class MainWindow(QMainWindow):
 
     def savePoly(self):
         if self.frame is not None:
-            if len(self.frame.polygons) > 0:
+            if len(self.frame.frameDict["annotation"]) > 0:
                 index = -1
                 count = 0
                 for p in self.polygonPool:
                     if p[0] == self.files[self.currIndex]:
                         index = count
-                        self.polygonPool[count][2] = list(self.frame.polygons)
+                        self.polygonPool[count][2] = list(self.frame.frameDict["annotation"])
                         break
                     count += 1
                 if index == -1:
-                    self.polygonPool.append([self.files[self.currIndex], self.videoFrame if self.useVideo else 0, list(self.frame.polygons)])
+                    print("TODO: Handle this case!")
+                    self.polygonPool.append([self.files[self.currIndex], self.videoFrame if self.useVideo else 0, list(self.frame.frameDict["annotation"])])
             else:
                 index = -1
                 count = 0
@@ -289,7 +289,7 @@ class MainWindow(QMainWindow):
             if self.frame.modified:
                 self.writeOutPolygons()
 
-        self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.polygons)))
+        self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
 
     def getNewFrame(self):
         if self.useVideo and self.capture.isOpened():
@@ -329,9 +329,7 @@ class MainWindow(QMainWindow):
 
             for i in range(0, len(self.videoDict["frame"])): # each frame
                 if('{0:015d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
-                    print('{0:015d}.{1} == {2}'.format(self.videoDict["frame"][i]["frameNo"], "JPG", self.files[self.currIndex]))
                     tempFrame = self.videoDict["frame"][i]
-                    print(tempFrame)
                     break
 
             if tempFrame != {}:
@@ -363,7 +361,7 @@ class MainWindow(QMainWindow):
         if(len(self.videoDict) > 0):
             if self.useVideo:
                 outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
-                outputFile = '{0}_{1:010d}.{2}'.format(os.path.splitext(outputFile)[0], self.videoFrame, "json")
+                outputFile = '{0}_{1:015d}.{2}'.format(os.path.splitext(outputFile)[0], self.videoFrame, "json")
             else:
                 outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
                 outputFile = '{0}.{1}'.format(os.path.splitext(outputFile)[0], "json")
@@ -378,7 +376,7 @@ class MainWindow(QMainWindow):
 
         if self.useVideo:
             inputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
-            inputFile = '{0}_{1:010d}.{2}'.format(os.path.splitext(inputFile)[0], self.videoFrame, "json")
+            inputFile = '{0}_{1:015d}.{2}'.format(os.path.splitext(inputFile)[0], self.videoFrame, "json")
         else:
             inputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
             inputFile = '{0}.{1}'.format(self.jsonDir, "json")
@@ -387,7 +385,7 @@ class MainWindow(QMainWindow):
             with open(inputFile, 'r') as f:
                 temp = json.load(f)
                 if len(temp) > 0:
-                    self.printVideoDict(temp)
+                    # self.printVideoDict(temp)
                     # print(temp["frame"])
                     self.videoDict = temp
 

@@ -24,26 +24,30 @@ class Segmenter:
 			with open(self.currDir + ".json", 'r') as f:
 				temp = json.load(f)
 				if len(temp) > 0:
-					self.polyPool = list(temp)
-					print("[LOG] Read polygons data of {} frames from {}".format(len(self.polyPool), self.currDir + ".json"))
+					self.polyPool = temp
+					print("[LOG] Read polygons data of {} frames from {}".format(len(self.polyPool["frame"]), self.currDir + ".json"))
 
 	def drawImages(self):
 		numPoly = 0; numPts = 0
-		for p in self.polyPool:
-			raw = Image.open(self.currDir + "/" + p[0])
+		for f in self.polyPool["frame"]:
+			numPoly += len(self.polyPool["frame"][f]["annotation"])
+			frame = self.polyPool["frame"][f]
+			raw = Image.open(self.currDir + "/" + '{0:015d}.{1}'.format(frame["frameno"], '.JPG'))
 			seg = Image.new('P', raw.size, 0)
 			d = ImageDraw.Draw(seg)
-			firstPt = None
-			numPoly += len(p[1])
-			for poly in p[1]:
-				if len(poly) > 0:
-					firstPt = poly[0]
+			for p in self.polyPool["frame"][f]["annotation"]:
+				numPts += len(p["point"])
+				firstPt = None
+				# Account for linking back up to first point at end of poly
+				if len(p["point"]) > 0:
+					firstPt = p[0]
 				dPolygon = [];	dLine = []
-				for pt in poly:
-					dPolygon += pt
+				for pt in p:
+					dPolygon += [pt["x"], pt["y"]]
 					numPts += 1
-				dPolygon += firstPt
+				# Add on first poly
+				dPolygon += [firstPt["x"], firstPt["y"]]
 				d.polygon(dPolygon, COLOUR, 255)
 				d.line(dPolygon, 255, BORDER)
 			seg.save(self.currDir + "_seg/" + p[0], raw.format)
-		print("[LOG] {} images processed, {} points drawn constituting {} polygons".format(len(self.polyPool), numPts, numPoly))
+		print("[LOG] {} images processed, {} points drawn constituting {} polygons".format(len(self.polyPool["frame"]), numPts, numPoly))

@@ -221,9 +221,10 @@ class MainWindow(QMainWindow):
         if self.jsonDir is None:
             self.jsonDir = self.imageDir
 
-        self.files = listdir(self.imageDir)
-        self.getNewFrame()
-        self.statusBar.showMessage('Image directory successfully loaded')
+        if self.imageDir is not '':
+            self.files = listdir(self.imageDir)
+            self.getNewFrame()
+            self.statusBar.showMessage('Image directory successfully loaded')
 
     def loadVideo(self):
         if self.capture and self.capture.isOpened():

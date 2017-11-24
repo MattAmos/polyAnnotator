@@ -31,7 +31,9 @@ class MainWindow(QMainWindow):
         self.icon = None
         self.helpList = [
             "Previous frame : ,",
+            "Copy polygons to prev frame : SHIFT + ,"
             "Next frame : .",
+            "Copy polygons to next frame : SHIFT + ."
             "Previous polygon : <-",
             "Next polygon : ->",
             "Reset image : 5",
@@ -121,7 +123,7 @@ class MainWindow(QMainWindow):
         self.setMouseTracking(True)
         self.setScreenGeometry()
 
-        self.setWindowTitle('Poly Annotator v0.03')
+        self.setWindowTitle('Poly Annotator v0.04')
         pixmap = QPixmap("icon/web.png")
         self.setWindowIcon(QIcon(pixmap))
         self.icon = QIcon(pixmap)
@@ -134,8 +136,15 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, e):
         modifiers = e.modifiers()
-        # ,
-        if e.key() == Qt.Key_Comma:
+        # , or .
+        if e.key() == Qt.Key_Comma or e.key() == Qt.Key_Period:
+            moveDir = 1
+            if e.key() == Qt.Key_Comma : moveDir = -1
+            else :  moveDir = 1
+            currPolys = list(self.frame.frameDict["annotation"])
+            # self.printFrame(self.frame.frameDict)
+            ctrlPress = self.frame.keys.CTRL == True
+            # print('Before: {}'.format(currPolys))
             self.savePoly()
             if self.useVideo:
                 self.writeOutPolygons()
@@ -145,29 +154,16 @@ class MainWindow(QMainWindow):
                         for f in os.listdir(self.jsonDir) if f.endswith('.json') and os.path.basename(f).startswith(video)], reverse=True)
                     self.videoFrame = next(v for i, v in enumerate(jsonFiles) if v < self.videoFrame)
                 else:
-                    self.videoFrame -= 1
+                    self.videoFrame += moveDir
             else:
-                self.currIndex -= 1
+                self.currIndex += moveDir
             if self.videoFrame is not None and self.videoNumFrames is not None:
                 self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
             self.getNewFrame()
-        # .
-        elif e.key() == Qt.Key_Period:
-            self.savePoly()
-            if self.useVideo:
-                self.writeOutPolygons()
-                if e.modifiers() == Qt.ControlModifier:
-                    video = os.path.splitext(os.path.basename(self.currVideo))[0]
-                    jsonFiles = sorted([int(os.path.splitext(os.path.basename(f))[0].replace('{0}_'.format(video), ''))
-                        for f in os.listdir(self.jsonDir) if f.endswith('.json') and os.path.basename(f).startswith(video)])
-                    self.videoFrame = next(v for i, v in enumerate(jsonFiles) if v > self.videoFrame)
-                else:
-                    self.videoFrame += 1
-            else:
-                self.currIndex += 1
-            if self.videoFrame is not None and self.videoNumFrames is not None:
-                self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
-            self.getNewFrame()
+            if ctrlPress:
+                self.frame.frameDict["annotation"] += currPolys
+                # self.printFrame(self.frame.frameDict)
+                # print('After: {}'.format(self.frame.frameDict["annotation"]))
         if self.frame is not None:
             # SHIFT
             if e.key() == Qt.Key_Shift:
@@ -274,7 +270,6 @@ class MainWindow(QMainWindow):
                         break
                     count += 1
                 if index == -1:
-                    print("TODO: Handle this case!")
                     self.polygonPool.append([self.files[self.currIndex], self.videoFrame if self.useVideo else 0, list(self.frame.frameDict["annotation"])])
             else:
                 index = -1
@@ -364,7 +359,7 @@ class MainWindow(QMainWindow):
                 outputFile = '{0}_{1:015d}.{2}'.format(os.path.splitext(outputFile)[0], self.videoFrame, "json")
             else:
                 outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
-                outputFile = '{0}.{1}'.format(os.path.splitext(outputFile)[0], "json")
+                outputFile = '{0}.{1}'.format(self.jsonDir, "json")
 
             with open(outputFile, 'w') as f:
                 json.dump(self.videoDict, f)
@@ -391,15 +386,24 @@ class MainWindow(QMainWindow):
 
             self.statusBar.showMessage('Successfully loaded {0} frames from file {1}'.format(len(self.videoDict["frame"]), inputFile))
 
+    def printAnno(self, anno):
+        if "label" in anno and "p" in anno:
+            print('\tAnnotation: {0}'.format(anno["label"]))
+            for k in range(0, len(anno["p"])):
+                print('\t\t{0}, {1}'.format(anno["p"][k]["x"], anno["p"][k]["y"]))
+
+    def printFrame(self, frame):
+        if "frameNo" in frame and "annotation" in frame:
+            print('FrameNo: {0}'.format(frame["frameNo"]))
+            for j in range(0, len(frame["annotation"])):
+                self.printAnno(frame["annotation"][j])
+
     def printVideoDict(self, temp):
-        print('{0}, {1}x{2}'.format(temp["path"], temp["width"], temp["height"]))
-        for i in range(0, len(temp["frame"])):
-            print('FrameNo: {0}'.format(temp["frame"][i]["frameNo"]))
-            for j in range(0, len(temp["frame"][i]["annotation"])):
-                print('\tAnnotation: {0}'.format(temp["frame"][i]["annotation"][j]["label"]))
-                for k in range(0, len(temp["frame"][i]["annotation"][j]["p"])):
-                    print('\t\t{0}, {1}'.format(temp["frame"][i]["annotation"][j]["p"][k]["x"], temp["frame"][i]["annotation"][j]["p"][k]["y"]))
-        # print(temp["frame"])
+        if "path" in temp and "width" in temp and "height" in temp:
+            print('{0}, {1}x{2}'.format(temp["path"], temp["width"], temp["height"]))
+            for i in range(0, len(temp["frame"])):
+                self.printFrame(temp["frame"][i])
+            # print(temp["frame"])
 
     def protoReadInPolygons(self):
         # Instead of self.jsonDir we want to read in {VIDEO FILENAME}.proto and the images from {VIDEO FILENAME}

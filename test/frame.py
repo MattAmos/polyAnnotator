@@ -1,6 +1,6 @@
 #! /usr/bin/env python2
 
-import sys, random, math
+import sys, random, math, functools
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -95,14 +95,15 @@ class Frame(QFrame):
                 c = [c[0] + point["x"], c[1] + point["y"]]
 
             c = [c[0] / float(len(polygon)), c[1] / float(len(polygon))]
-            polygons.append(sorted(polygon, cmp=lambda p1, p2: int((p1[0] - c[0]) * (p2[1] - c[1]) - (p2[0] - c[0]) * (p1[1] - c[1]))))
+            # sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int(math.atan2(p1["y"] - c[1], p1["x"] - c[0]) - math.atan2(p2["y"] - c[1], p2["x"] - c[0]))))
+            sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int((p1["x"] - c[0]) * (p2["y"] - c[1]) - (p2["x"] - c[0]) * (p1["y"] - c[1]))))
+            polygons.append(sortedPoly)
 
         self.polygons = polygons
 
     def findNearestPointInPolygon(self, point):
         index = -1
         dist = float('inf')
-        print(enumerate(self.points))
         for i, pt in enumerate(self.points):
             d = math.sqrt(self.getSquaredDistance([pt["x"], pt["y"]], point))
             if d < dist:
@@ -111,17 +112,6 @@ class Frame(QFrame):
 
         return index
 
-    def quickHull(self, s):
-        cHull = []
-        if len(s) > 0:
-            left = {}
-            right = {}
-            for p in s:
-                if left is {} or p["x"] < left["x"]:
-                    left = p
-                if right is {} or p["x"] > right["x"]:
-                    right = p
-            v = {"x" : left["x"] - right["x"], "y" : left["y"] - right["y"]}
     ### Points Functions ###
 
     def clearPoints(self):
@@ -171,7 +161,7 @@ class Frame(QFrame):
             dist = [c[0] - x, c[1] - y]
 
             # Translate the polygon
-            self.points = [[int(pt["x"] - dist[0]), int(pt["y"] - dist[1])] for pt in self.points]
+            self.points = [{"x" : int(pt["x"] - dist[0]), "y" : int(pt["y"] - dist[1])} for pt in self.points]
             # Check for cleared polygon list
             if self.frameDict != {} and self.polyIndex < len(self.frameDict["annotation"]):
                 self.frameDict["annotation"][self.polyIndex]["p"] = self.points
@@ -200,7 +190,7 @@ class Frame(QFrame):
                 x_max = x
                 y_max = y
 
-            self.points = [{"x" : x_min, "y" : y_min}, { "x" : x_max, "y" : y_min}, { "x" : x_max, "y" : y_max}, { "x" : x_min, "y" : y_max}]
+            self.points = [{"x" : x_min, "y" : y_min}, {"x" : x_max, "y" : y_min}, {"x" : x_max, "y" : y_max}, {"x" : x_min, "y" : y_max}]
             self.frameDict["annotation"][self.polyIndex]["p"] = self.points
 
         elif self.keys.LCLK and self.oldPt != []:
@@ -322,8 +312,14 @@ class Frame(QFrame):
     def getQPoints(self, pList):
         qPoints = []
         for i in range(len(pList)):
-            x = pList[i]["x"] + BRUSH_SIZE/2.0
-            y = pList[i]["y"] - BRUSH_SIZE/2.0
+            if "x" in pList[i]:
+                x = pList[i]["x"] + BRUSH_SIZE/2.0
+            else:
+                x = pList[i][0] + BRUSH_SIZE/2.0
+            if "y" in pList[i]:
+                y = pList[i]["y"] - BRUSH_SIZE/2.0
+            else:
+                y = pList[i][1] + BRUSH_SIZE/2.0
             if x < 0 : x = 0
             if y < 0 : y = 0
             if x > self.image.width() : x = self.image.width()

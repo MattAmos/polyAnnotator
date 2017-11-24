@@ -206,7 +206,7 @@ class MainWindow(QMainWindow):
             elif e.key() == Qt.Key_Delete and self.frame.keys.CTRL:
                 self.statusBar.showMessage('Deleted {0} polygons'.format(len(self.frame.frameDict["annotation"])))
                 self.frame.frameDict["annotation"] = []
-                self.currIndex = 0
+                self.frame.polyIndex = 0
 
     def keyReleaseEvent(self, e):
         if e.key() == Qt.Key_Escape:

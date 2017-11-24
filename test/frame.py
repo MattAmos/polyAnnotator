@@ -11,6 +11,7 @@ BRUSH_SIZE = 5
 UNDO_SIZE  = 10
 KEY_SIZE   = 6
 
+# Key handler to set held keys
 class Key():
     def __init__(self):
         self.SHIFT = False
@@ -26,19 +27,22 @@ class Frame(QFrame):
         self.parent = parent
         # Containers
         self.polyIndex = 0
-        self.points = []
+        self.points    = []
         self.frameDict = {}
         self.currPoint = []
-        self.image = image
+        self.image     = image
         # Key variables
         self.keys = Key()
-        self.saved = False
+        self.saved    = False
         self.modified = False
-        self.toDraw = True
+        self.toDraw   = True
         # Movement point variables
         self.midClkPos = [0,0]
-        self.oldPt = []
-        self.newPt = []
+        self.oldPt = {"x" : -1, "y" : -1}
+        self.newPt = self.oldPt
+        # Display variables
+        self.scaleFactor = 0
+        self.invScaleFactor = 0
         self.initUI()
 
     def initUI(self):
@@ -47,10 +51,10 @@ class Frame(QFrame):
         self.setMouseTracking(True)
 
         self.center()
-        self.setWindowTitle('Poly Annotator v0.03')
+        self.setWindowTitle('Poly Annotator v0.04')
         pixmap = QPixmap("icon/web.png")
         self.setWindowIcon(QIcon(pixmap))
-        self.setGeometry(self.parent.x(), self.parent.y(), self.image.width(), self.image.height())
+        self.setGeometry(self.parent.x(), self.parent.y(), self.parent.screen.width(), self.parent.screen.height())
         self.show()
 
     ### Polygon Functions ###
@@ -87,15 +91,17 @@ class Frame(QFrame):
 
     def sortPolygons(self):
         polygons = []
-
         for polygon in self.frameDict["annotation"]:
+            # Get centre
             c = [0.0, 0.0]
-
             for point in polygon["p"]:
                 c = [c[0] + point["x"], c[1] + point["y"]]
-
             c = [c[0] / float(len(polygon)), c[1] / float(len(polygon))]
+            
+            # Sort by angle
             # sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int(math.atan2(p1["y"] - c[1], p1["x"] - c[0]) - math.atan2(p2["y"] - c[1], p2["x"] - c[0]))))
+            
+            # Sort by distance in x from centre * distance in y from centre
             sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int((p1["x"] - c[0]) * (p2["y"] - c[1]) - (p2["x"] - c[0]) * (p1["y"] - c[1]))))
             polygons.append(sortedPoly)
 
@@ -124,7 +130,7 @@ class Frame(QFrame):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
-        self.move(qr.topLeft())
+        # self.move(qr.topLeft())
 
     def getDistanceToLine(self, p1, p2, p3):
         num = abs((p2[1] - p1[1]) * p3[0] - (p2[0] - p1[0]) * p3[1] + p2[0] * p1[1] - p2[1] * p1[0])
@@ -145,7 +151,9 @@ class Frame(QFrame):
     ### Mouse Functions ###
 
     def mouseMoveEvent(self, e):
-        [x,y] = self.checkBoundary(e.x(),e.y())
+        [x,y] = self.checkBoundary(e.x(), e.y())
+        [x,y] = [x * self.invScaleFactor, y * self.invScaleFactor]
+        
         self.toDraw = True
         # Translate polygon
         if self.keys.ALT and self.keys.SHIFT and self.keys.LCLK and len(self.points) > 0:
@@ -153,12 +161,12 @@ class Frame(QFrame):
             c = [0.0, 0.0]
 
             for point in self.points:
-                c = [c[0] + point["x"], c[1] + point["y"]]
+                c = [c[0] + point["x"] * self.scaleFactor, c[1] + point["y"] * self.scaleFactor]
 
             c = [c[0] / float(len(self.points)), c[1] / float(len(self.points))]
 
             # Get distance between mouse coordinates and polygon center
-            dist = [c[0] - x, c[1] - y]
+            dist = [c[0] - x * self.scaleFactor, c[1] - y * self.scaleFactor]
 
             # Translate the polygon
             self.points = [{"x" : int(pt["x"] - dist[0]), "y" : int(pt["y"] - dist[1])} for pt in self.points]
@@ -176,7 +184,6 @@ class Frame(QFrame):
             x_max = max(p1["x"], max(p2["x"], max(p3["x"], p4["x"])))
             y_max = max(p1["y"], max(p2["y"], max(p3["y"], p4["y"])))
             pt = self.points[self.findNearestPointInPolygon([x, y])]
-
             if pt["x"] == x_min and pt["y"] == y_min:
                 x_min = x
                 y_min = y
@@ -193,9 +200,9 @@ class Frame(QFrame):
             self.points = [{"x" : x_min, "y" : y_min}, {"x" : x_max, "y" : y_min}, {"x" : x_max, "y" : y_max}, {"x" : x_min, "y" : y_max}]
             self.frameDict["annotation"][self.polyIndex]["p"] = self.points
 
-        elif self.keys.LCLK and self.oldPt != []:
-            temp = next((pt for pt in self.points if pt == self.oldPt), [])
-            if temp != []:
+        elif self.keys.LCLK and self.oldPt != {}:
+            temp = next((pt for pt in self.points if pt == self.oldPt), {})
+            if temp != {}:
                 index = self.points.index(self.oldPt)
                 self.points.remove(temp)
                 self.points.insert(index, {"x" : x, "y" : y})
@@ -209,10 +216,11 @@ class Frame(QFrame):
     def mousePressEvent(self, e):
         self.toDraw = True
         if e.button() == Qt.LeftButton:
-            [x,y] = self.checkBoundary(e.x(),e.y())
+            [x,y] = self.checkBoundary(e.x(), e.y())
+            [x,y] = [x * self.invScaleFactor, y * self.invScaleFactor]
 
             self.keys.LCLK = True
-            temp = next((pt for pt in self.points if self.getSquaredDistance([pt["x"], pt["y"]], [x, y]) < (SIZE + SIZE)**2), [])
+            temp = next((pt for pt in self.points if self.getSquaredDistance([pt["x"] , pt["y"]], [x, y]) < (SIZE + SIZE)**2), [])
             if temp != []:
                 # print(temp)
                 self.oldPt = temp
@@ -223,15 +231,16 @@ class Frame(QFrame):
     def mouseReleaseEvent(self, e):
         self.toDraw = True
         if e.button() == Qt.LeftButton:
-            [x,y] = self.checkBoundary(e.x(),e.y())
+            [x,y] = self.checkBoundary(e.x(), e.y())
+            [x,y] = [x * self.invScaleFactor, y * self.invScaleFactor]
 
             self.keys.LCLK = False
 
             # Delete point from polygon
             if self.keys.SHIFT and not self.keys.ALT:
-                temp = [z for z in self.points if self.getSquaredDistance([z["x"], z["y"]], [x, y]) > (SIZE + SIZE)**2]
+                temp = [z for z in self.points if self.getSquaredDistance([z["x"] , z["y"]], [x, y]) > (SIZE + SIZE)**2]
                 if len(self.points) - len(temp) > 0:
-                    self.points = [z for z in self.points if self.getSquaredDistance([z["x"], z["y"]], [x, y]) > (SIZE + SIZE)**2]
+                    self.points = [z for z in self.points if self.getSquaredDistance([z["x"] , z["y"]], [x, y]) > (SIZE + SIZE)**2]
                     self.sortPolygons()
 
             # Add point to polygon
@@ -246,10 +255,8 @@ class Frame(QFrame):
 
     def wheelEvent(self, e):
         self.toDraw = True
-        if(e.angleDelta().y() > 0):
-            self.resize(self.width()*0.9, self.height()*0.9)
-        elif(e.angleDelta().y() < 0):
-            self.resize(self.width()*1.1, self.height()*1.1)
+        if(e.angleDelta().y() > 0): self.resize(self.width()*0.9, self.height()*0.9)
+        elif(e.angleDelta().y() < 0): self.resize(self.width()*1.1, self.height()*1.1)
 
     def checkBoundary(self, x, y):
         return [max(0, min(x, self.width())), max(0, min(y, self.height()))]
@@ -257,7 +264,6 @@ class Frame(QFrame):
     ### Drawing Functions ###
 
     def paintEvent(self, e):
-        # if self.toDraw == True or self.modified == True:
         qp = QPainter()
         qp.begin(self)
         self.draw(qp)
@@ -270,8 +276,18 @@ class Frame(QFrame):
         self.toDraw = False
 
     def draw(self, qp):
+        # screen = [self.parent.screen.width(), self.parent.screen.height()]
+        image  = [self.parent.videoDict["width"], self.parent.videoDict["height"]]
+
+        # aspectRatio = image[0] / image[1]   # Aspect Ratio = image width / image height
+        self.scaleFactor = self.parent.dimensions[0] / image[0] # Scale Factor = screen width / screen height 
+        if self.scaleFactor != 0:
+            self.invScaleFactor = 1 / self.scaleFactor
+
         # First, draw the image
-        qp.drawImage(QPoint(0,0), self.image)
+        if not self.image.isNull():
+            qp.drawImage(QPoint(0,(self.parent.frameGeometry().height() - self.parent.dimensions[1]) / 2.0), self.image.scaledToWidth(self.parent.dimensions[0]))
+
         # Then draw all non-focused polygons
         brush = QBrush(Qt.SolidPattern)
         color = QColor()
@@ -295,7 +311,7 @@ class Frame(QFrame):
         qp.setPen(QPen(Qt.white, BRUSH_SIZE, Qt.SolidLine))
         size = self.size()
         qPoints = self.getQPoints(self.points)
-        for pt in self.points:  qp.drawEllipse(pt["x"], pt["y"], BRUSH_SIZE, BRUSH_SIZE)
+        for pt in self.points:  qp.drawEllipse(self.scaleFactor * pt["x"], self.scaleFactor * pt["y"], BRUSH_SIZE, BRUSH_SIZE)
 
         # Draw outline of focused polygon
         qp.setPen(QPen(Qt.red, 1, Qt.SolidLine))
@@ -324,5 +340,6 @@ class Frame(QFrame):
             if y < 0 : y = 0
             if x > self.image.width() : x = self.image.width()
             if y > self.image.height() : y = self.image.height()
+            [x, y] = [x * self.scaleFactor, y * self.scaleFactor]
             qPoints += [QPoint(x, y)]
         return qPoints

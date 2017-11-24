@@ -16,6 +16,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.screen = None
+        self.dimensions = [0,0]
         self.imageDir = None
         self.jsonDir = None
         self.files = None
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
         self.videoFrame = 0
         self.videoNumFrames = None
         self.imageCount = None
+        self.copiedPolys = []
 
         self.poly_video = None
         self.initUI()
@@ -89,18 +91,18 @@ class MainWindow(QMainWindow):
         loadJSONDir.setStatusTip('Set load/save directory for image labels')
         loadJSONDir.triggered.connect(self.setJSONDir)
 
-        self.toolbar = self.addToolBar('Exit')
-        self.toolbar.addAction(exitAct)
-        self.toolbar = self.addToolBar('Save')
-        self.toolbar.addAction(saveDir)
-        self.toolbar = self.addToolBar('Load')
-        self.toolbar.addAction(loadDir)
-        self.toolbar = self.addToolBar('Controls')
-        self.toolbar.addAction(helpAct)
-        self.toolbar = self.addToolBar('Load')
-        self.toolbar.addAction(loadVideo)
-        self.toolbar = self.addToolBar('Set labels directory')
-        self.toolbar.addAction(loadJSONDir)
+        toolbar = self.addToolBar('Exit')
+        toolbar.addAction(exitAct)
+        toolbar = self.addToolBar('Save')
+        toolbar.addAction(saveDir)
+        toolbar = self.addToolBar('Load')
+        toolbar.addAction(loadDir)
+        toolbar = self.addToolBar('Controls')
+        toolbar.addAction(helpAct)
+        toolbar = self.addToolBar('Load')
+        toolbar.addAction(loadVideo)
+        toolbar = self.addToolBar('Set labels directory')
+        toolbar.addAction(loadJSONDir)
 
         menuBar = self.menuBar()
         fileMenu = menuBar.addMenu('File')
@@ -141,9 +143,9 @@ class MainWindow(QMainWindow):
             moveDir = 1
             if e.key() == Qt.Key_Comma : moveDir = -1
             else :  moveDir = 1
-            currPolys = list(self.frame.frameDict["annotation"])
+            # currPolys = list(self.frame.frameDict["annotation"])
             # self.printFrame(self.frame.frameDict)
-            ctrlPress = self.frame.keys.CTRL == True
+            # ctrlPress = self.frame.keys.CTRL == True
             # print('Before: {}'.format(currPolys))
             self.savePoly()
             if self.useVideo:
@@ -160,8 +162,8 @@ class MainWindow(QMainWindow):
             if self.videoFrame is not None and self.videoNumFrames is not None:
                 self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
             self.getNewFrame()
-            if ctrlPress:
-                self.frame.frameDict["annotation"] += currPolys
+            # if ctrlPress:
+            #     self.frame.frameDict["annotation"] += currPolys
                 # self.printFrame(self.frame.frameDict)
                 # print('After: {}'.format(self.frame.frameDict["annotation"]))
         if self.frame is not None:
@@ -178,9 +180,6 @@ class MainWindow(QMainWindow):
             # 5
             if e.key() == Qt.Key_5:
                 self.frame.setGeometry(self.screen.x(), self.screen.y(), self.frame.image.width(), self.frame.image.height())
-            # CTRL + Z
-            elif e.key() == Qt.Key_Z and self.frame.ctrlKey:
-                self.statusBar.showMessage('I don\'t know how to undo yet!')
             # ENTER
             elif e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return:
                 self.frame.addPoly()
@@ -193,6 +192,21 @@ class MainWindow(QMainWindow):
             # ->
             elif e.key() == Qt.Key_Right:
                 self.frame.selectPoly(1)
+            # CTRL + C
+            elif e.key() == Qt.Key_C and self.frame.keys.CTRL:
+                self.copiedPolys = list(self.frame.frameDict["annotation"])
+                self.statusBar.showMessage('Copied {0} polygons'.format(len(self.frame.frameDict["annotation"])))
+            # CTRL + V
+            elif e.key() == Qt.Key_V and self.frame.keys.CTRL and self.copiedPolys != []:
+                self.frame.frameDict["annotation"] += list(self.copiedPolys)
+                self.statusBar.showMessage('Pasted {0} polygons'.format(len(self.copiedPolys)))
+            # CTRL + Z
+            elif e.key() == Qt.Key_Z and self.frame.keys.CTRL:
+                self.statusBar.showMessage('I don\'t know how to undo yet!')
+            elif e.key() == Qt.Key_Delete and self.frame.keys.CTRL:
+                self.statusBar.showMessage('Deleted {0} polygons'.format(len(self.frame.frameDict["annotation"])))
+                self.frame.frameDict["annotation"] = []
+                self.currIndex = 0
 
     def keyReleaseEvent(self, e):
         if e.key() == Qt.Key_Escape:
@@ -310,15 +324,15 @@ class MainWindow(QMainWindow):
 
     def updateFrame(self):
         if self.useVideo or (self.files is not None and len(self.files) > 0):
-            copyFrame = {}
-            if self.frame is not None:
-                copyFrame = self.frame.frameDict
+            # copyFrame = {}
+            # if self.frame is not None:
+            #     copyFrame = self.frame.frameDict
             self.frame = Frame(self, self.currImage)
             if len(self.videoDict["frame"]) == 0 or self.useVideo:
                 self.readInPolygons()
 
+            # self.show()
             self.setScreenGeometry()
-            self.show()
 
             tempFrame = {}
 
@@ -330,20 +344,17 @@ class MainWindow(QMainWindow):
             if tempFrame != {}:
                 self.statusBar.showMessage('Frame loaded from file')
                 self.frame.frameDict = tempFrame
-            elif copyFrame != {}:
-                self.statusBar.showMessage('Frame copied from previous frame')
-                tempFrameNo = copyFrame["frameNo"]
-                self.frame.frameDict = copyFrame
-                copyFrame["frameNo"] = tempFrameNo
+            # elif copyFrame != {}:
+            #     self.statusBar.showMessage('Frame copied from previous frame')
+            #     tempFrameNo = copyFrame["frameNo"]
+            #     self.frame.frameDict = copyFrame
+            #     copyFrame["frameNo"] = tempFrameNo
             if self.frame.frameDict != {}:
                 self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
         else:
             self.frame = None
 
         self.setCentralWidget(self.frame)
-        self.setWindowTitle('Poly Annotator v0.03')
-        pixmap = QPixmap("icon/web.png")
-        self.setWindowIcon(QIcon(pixmap))
 
     def showHelp(self):
         msg = QMessageBox()
@@ -383,6 +394,8 @@ class MainWindow(QMainWindow):
                     # self.printVideoDict(temp)
                     # print(temp["frame"])
                     self.videoDict = temp
+                else:
+                    self.jsonDir = ''
 
             self.statusBar.showMessage('Successfully loaded {0} frames from file {1}'.format(len(self.videoDict["frame"]), inputFile))
 
@@ -433,7 +446,6 @@ class MainWindow(QMainWindow):
         height = 0.6 * self.screen.height()
 
         if self.currImage is not None and self.frame is not None:
-            width = self.frame.image.width() if self.frame.image.width() < (0.9 * self.screen.width()) else self.screen.width()
-            height = self.frame.image.height() if self.frame.image.height() < (0.9 * self.screen.height()) else self.screen.height()
-
-        self.setGeometry(self.screen.x(), self.screen.y(), width, height)
+            self.dimensions = [self.frameGeometry().width(), self.frameGeometry().height()]
+        else:
+            self.setGeometry(self.screen.x(), self.screen.y(), width, height)

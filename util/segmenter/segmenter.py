@@ -30,24 +30,23 @@ class Segmenter:
 	def drawImages(self):
 		numPoly = 0; numPts = 0
 		for f in self.polyPool["frame"]:
-			numPoly += len(self.polyPool["frame"][f]["annotation"])
-			frame = self.polyPool["frame"][f]
-			raw = Image.open(self.currDir + "/" + '{0:015d}.{1}'.format(frame["frameno"], '.JPG'))
-			seg = Image.new('P', raw.size, 0)
+			numPoly += len(f["annotation"])
+			raw = Image.open(self.currDir + "/" + '{0:015d}.{1}'.format(f["frameNo"], 'JPG'))
+			seg = Image.new('L', raw.size, 0)
 			d = ImageDraw.Draw(seg)
-			for p in self.polyPool["frame"][f]["annotation"]:
-				numPts += len(p["point"])
+			for p in f["annotation"]:
+				numPts += len(p["p"])
 				firstPt = None
 				# Account for linking back up to first point at end of poly
-				if len(p["point"]) > 0:
-					firstPt = p[0]
+				if len(p["p"]) > 0:
+					firstPt = p["p"][0]
 				dPolygon = [];	dLine = []
-				for pt in p:
+				for pt in p["p"]:
 					dPolygon += [pt["x"], pt["y"]]
 					numPts += 1
 				# Add on first poly
 				dPolygon += [firstPt["x"], firstPt["y"]]
 				d.polygon(dPolygon, COLOUR, 255)
 				d.line(dPolygon, 255, BORDER)
-			seg.save(self.currDir + "_seg/" + p[0], raw.format)
+			seg.save(self.currDir + "_seg/" + '{0:015d}.{1}'.format(f["frameNo"], 'JPG'), seg.format)
 		print("[LOG] {} images processed, {} points drawn constituting {} polygons".format(len(self.polyPool["frame"]), numPts, numPoly))

@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from frame import Frame
+from copy import deepcopy
 import cv2
 import numpy as np
 import video_pb2
@@ -194,19 +195,24 @@ class MainWindow(QMainWindow):
                 self.frame.selectPoly(1)
             # CTRL + C
             elif e.key() == Qt.Key_C and self.frame.keys.CTRL:
-                self.copiedPolys = list(self.frame.frameDict["annotation"])
+                self.copiedPolys = deepcopy(self.frame.frameDict["annotation"])
                 self.statusBar.showMessage('Copied {0} polygons'.format(len(self.frame.frameDict["annotation"])))
             # CTRL + V
             elif e.key() == Qt.Key_V and self.frame.keys.CTRL and self.copiedPolys != []:
-                self.frame.frameDict["annotation"] += list(self.copiedPolys)
+                if "annotation" in self.frame.frameDict:
+                    self.frame.frameDict["annotation"] += deepcopy(self.copiedPolys)
+                else:
+                    self.frame.frameDict["annotation"] = deepcopy(self.copiedPolys)
                 self.statusBar.showMessage('Pasted {0} polygons'.format(len(self.copiedPolys)))
             # CTRL + Z
             elif e.key() == Qt.Key_Z and self.frame.keys.CTRL:
                 self.statusBar.showMessage('I don\'t know how to undo yet!')
             elif e.key() == Qt.Key_Delete and self.frame.keys.CTRL:
-                self.statusBar.showMessage('Deleted {0} polygons'.format(len(self.frame.frameDict["annotation"])))
-                self.frame.frameDict["annotation"] = []
-                self.frame.polyIndex = 0
+                if "annotation" in self.frame.frameDict:
+                    self.statusBar.showMessage('Deleted {0} polygons'.format(len(self.frame.frameDict["annotation"])))
+                    self.frame.frameDict["annotation"] = []
+                else:
+                    self.statusBar.showMessage('Deleted 0 polygons')
 
     def keyReleaseEvent(self, e):
         if e.key() == Qt.Key_Escape:
@@ -220,7 +226,7 @@ class MainWindow(QMainWindow):
                 self.frame.keys.ALT = False
 
             if e.key() == Qt.Key_Delete:
-                if len(self.frame.points) > 0:
+                if self.frame.frameDict != {} and "annotation" in self.frame.frameDict and len(self.frame.frameDict["annotation"]) > 0 and len(self.frame.points) > 0:
                     self.frame.clearPoints()
                     self.savePoly()
                     self.statusBar.showMessage('Deleted polygon')
@@ -238,6 +244,7 @@ class MainWindow(QMainWindow):
 
         if self.imageDir is not '':
             self.files = listdir(self.imageDir)
+            self.files.sort()
             self.getNewFrame()
             self.statusBar.showMessage('Image directory successfully loaded')
 
@@ -264,6 +271,7 @@ class MainWindow(QMainWindow):
             self.useVideo = True
             self.currIndex = 0
             self.files = [self.currVideo]
+            self.files.sort()
             self.videoFrame = 0
             self.videoNumFrames = int(self.capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
             self.getNewFrame()
@@ -274,31 +282,18 @@ class MainWindow(QMainWindow):
 
     def savePoly(self):
         if self.frame is not None:
-            if len(self.frame.frameDict["annotation"]) > 0:
-                index = -1
-                count = 0
-                for p in self.polygonPool:
-                    if p[0] == self.files[self.currIndex]:
-                        index = count
-                        self.polygonPool[count][2] = list(self.frame.frameDict["annotation"])
+            if "annotation" in self.frame.frameDict and len(self.frame.frameDict["annotation"]) > 0:
+                for i in range(0, len(self.videoDict["frame"])): # each frame
+                    if('{0:015d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
+                        self.videoDict["frame"][i] = self.frame.frameDict
                         break
-                    count += 1
-                if index == -1:
-                    self.polygonPool.append([self.files[self.currIndex], self.videoFrame if self.useVideo else 0, list(self.frame.frameDict["annotation"])])
-            else:
-                index = -1
-                count = 0
-                for p in self.polygonPool:
-                    if p[0] == self.files[self.currIndex]:
-                        index = count
-                        self.polygonPool[count][2] = []
-                        break
-                    count += 1
 
-            if self.frame.modified:
-                self.writeOutPolygons()
+                self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
 
-        self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
+                if self.frame.modified:
+                    print("writing...")
+                    self.writeOutPolygons()
+
 
     def getNewFrame(self):
         if self.useVideo and self.capture.isOpened():
@@ -335,22 +330,24 @@ class MainWindow(QMainWindow):
             self.setScreenGeometry()
 
             tempFrame = {}
-
             for i in range(0, len(self.videoDict["frame"])): # each frame
                 if('{0:015d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
                     tempFrame = self.videoDict["frame"][i]
                     break
+                # print('{0}, {1}'.format('{0:015d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG"), self.files[self.currIndex]))
 
             if tempFrame != {}:
                 self.statusBar.showMessage('Frame loaded from file')
                 self.frame.frameDict = tempFrame
-            # elif copyFrame != {}:
-            #     self.statusBar.showMessage('Frame copied from previous frame')
-            #     tempFrameNo = copyFrame["frameNo"]
-            #     self.frame.frameDict = copyFrame
-            #     copyFrame["frameNo"] = tempFrameNo
+            else:
+                print("{}: temp frame is empty!".format(int(self.files[self.currIndex][:-4])))
+                self.frame.frameDict = {"annotation" : [], "frameNo" : int(self.files[self.currIndex][:-4])}
+
             if self.frame.frameDict != {}:
-                self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
+                if "annotation" in self.frame.frameDict:
+                    self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
+                else:
+                    self.polygonCount.setText('0 polygons in image')
         else:
             self.frame = None
 

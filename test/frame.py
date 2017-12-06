@@ -61,25 +61,31 @@ class Frame(QFrame):
 
     # Selects the polygon currently being focused by the frame
     def selectPoly(self, offset):
-        # Firstly we store the current polygon in our dictionary
-        if len(self.frameDict["annotation"]) == 0 and len(self.points) > 0:
-            self.frameDict["annotation"].append({"p" : self.points})
-        elif len(self.points) > 0:
-            self.frameDict["annotation"][self.polyIndex]["p"] = list(self.points)
+        if "annotation" in self.frameDict:
+            # Firstly we store the current polygon in our dictionary
+            if len(self.frameDict["annotation"]) == 0 and len(self.points) > 0:
+                self.frameDict["annotation"].append({"p" : self.points})
+            elif len(self.points) > 0:
+                self.frameDict["annotation"][self.polyIndex]["p"] = list(self.points)
 
-        # Secondly we set the new current polygon
-        if len(self.frameDict["annotation"]) > 0:
-            self.polyIndex = (self.polyIndex + offset) % len(self.frameDict["annotation"])
-            self.points = self.frameDict["annotation"][self.polyIndex]["p"]
-        else:
-            self.polyIndex = 0
-            self.points = []
+            # Secondly we set the new current polygon
+            if len(self.frameDict["annotation"]) > 0:
+                self.polyIndex = (self.polyIndex + offset) % len(self.frameDict["annotation"])
+                self.points = self.frameDict["annotation"][self.polyIndex]["p"]
+            else:
+                self.polyIndex = 0
+                self.points = []
 
     # Stores current polygon in the polygon list if it has points, and creates a new polygon
     def addPoly(self):
-        if len(self.points) > 0:
+        if "annotation" not in self.frameDict:
+            self.frameDict["annotation"] = []
+
+        if "annotation" in self.frameDict and len(self.points) > 0:
             self.modified = True
-            self.frameDict["annotation"][self.polyIndex]["p"] = list(self.points)
+            print(self.polyIndex)
+            self.frameDict["annotation"].insert(self.polyIndex, {"p" : list(self.points)})
+            print(self.frameDict["annotation"][self.polyIndex]["p"])
             self.polyIndex += 1
             self.points = []
 
@@ -91,20 +97,20 @@ class Frame(QFrame):
 
     def sortPolygons(self):
         polygons = []
-        for polygon in self.frameDict["annotation"]:
-            # Get centre
-            c = [0.0, 0.0]
-            for point in polygon["p"]:
-                c = [c[0] + point["x"], c[1] + point["y"]]
-            c = [c[0] / float(len(polygon)), c[1] / float(len(polygon))]
-            
-            # Sort by angle
-            # sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int(math.atan2(p1["y"] - c[1], p1["x"] - c[0]) - math.atan2(p2["y"] - c[1], p2["x"] - c[0]))))
-            
-            # Sort by distance in x from centre * distance in y from centre
-            sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int((p1["x"] - c[0]) * (p2["y"] - c[1]) - (p2["x"] - c[0]) * (p1["y"] - c[1]))))
-            polygons.append(sortedPoly)
-
+        if "annotation" in self.frameDict:
+            for polygon in self.frameDict["annotation"]:
+                # Get centre
+                c = [0.0, 0.0]
+                for point in polygon["p"]:
+                    c = [c[0] + point["x"], c[1] + point["y"]]
+                c = [c[0] / float(len(polygon)), c[1] / float(len(polygon))]
+                
+                # Sort by angle
+                # sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int(math.atan2(p1["y"] - c[1], p1["x"] - c[0]) - math.atan2(p2["y"] - c[1], p2["x"] - c[0]))))
+                
+                # Sort by distance in x from centre * distance in y from centre
+                sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int((p1["x"] - c[0]) * (p2["y"] - c[1]) - (p2["x"] - c[0]) * (p1["y"] - c[1]))))
+                polygons.append(sortedPoly)
         self.polygons = polygons
 
     def findNearestPointInPolygon(self, point):
@@ -220,8 +226,20 @@ class Frame(QFrame):
             [x,y] = [x * self.invScaleFactor, y * self.invScaleFactor]
 
             self.keys.LCLK = True
-            temp = next((pt for pt in self.points if self.getSquaredDistance([pt["x"] , pt["y"]], [x, y]) < (SIZE + SIZE)**2), [])
-            if temp != []:
+            temp = []
+            minDist = -1
+            ptFound = False
+            if len(self.points) > 0:
+                minDist = self.getSquaredDistance([self.points[0]["x"] , self.points[0]["y"]], [x, y])
+                temp = self.points[0]
+            for pt in self.points:
+                d = self.getSquaredDistance([pt["x"] , pt["y"]], [x, y])
+                if d < (SIZE + SIZE)**2 and d <= minDist:
+                    ptFound = True
+                    minDist = d
+                    temp = pt
+            # temp = next((pt for pt in self.points if self.getSquaredDistance([pt["x"] , pt["y"]], [x, y]) < (SIZE + SIZE)**2), [])
+            if ptFound:
                 # print(temp)
                 self.oldPt = temp
 

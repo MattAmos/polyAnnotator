@@ -31,7 +31,7 @@ class Segmenter:
 		numPoly = 0; numPts = 0
 		for f in self.polyPool["frame"]:
 			numPoly += len(f["annotation"])
-			raw = Image.open(self.currDir + "/" + '{0:015d}.{1}'.format(f["frameNo"], 'JPG'))
+			raw = Image.open(self.currDir + "/" + '{0:010d}.{1}'.format(f["frameNo"], 'JPG'))
 			seg = Image.new('L', raw.size, 0)
 			d = ImageDraw.Draw(seg)
 			for p in f["annotation"]:
@@ -48,5 +48,5 @@ class Segmenter:
 				dPolygon += [firstPt["x"], firstPt["y"]]
 				d.polygon(dPolygon, COLOUR, 255)
 				d.line(dPolygon, 255, BORDER)
-			seg.save(self.currDir + "_seg/" + '{0:015d}.{1}'.format(f["frameNo"], 'JPG'), seg.format)
+			seg.save(self.currDir + "_seg/" + '{0:010d}.{1}'.format(f["frameNo"], 'JPG'), seg.format)
 		print("[LOG] {} images processed, {} points drawn constituting {} polygons".format(len(self.polyPool["frame"]), numPts, numPoly))

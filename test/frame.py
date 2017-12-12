@@ -315,6 +315,7 @@ class Frame(QFrame):
             count = 0
             for i in range(0, 360, int(360/len(self.frameDict["annotation"]))):
                 polygon = self.frameDict["annotation"][count]["p"]
+                # sortedPoly = self.sortPoints(polygon)
                 qPoints = self.getQPoints(polygon)
                 h = i
                 s = 90 + random.random()*10
@@ -329,6 +330,7 @@ class Frame(QFrame):
         # Then draw all points
         qp.setPen(QPen(Qt.white, BRUSH_SIZE, Qt.SolidLine))
         size = self.size()
+        # sortedPoly = self.sortPoints(self.points)
         qPoints = self.getQPoints(self.points)
         for pt in self.points:  qp.drawEllipse(self.scaleFactor * pt["x"],self.scaleFactor * pt["y"], BRUSH_SIZE, BRUSH_SIZE)
 
@@ -341,6 +343,20 @@ class Frame(QFrame):
         brush.setColor(color)
         qp.setBrush(brush)
         qp.drawConvexPolygon(QPolygon(qPoints))
+
+    def angle(self, pt):
+        return math.atan2(self.c['y'] - pt['y'], self.c['x'] - pt['x'])
+
+    def sortPoints(self, points):
+        sortedPts = points
+        if len(points) > 0:
+            self.c = {'x' : 0, 'y' : 0}
+            for pt in points:
+                [self.c['x'], self.c['y']] = [self.c['x'] + pt['x'], self.c['y'] + pt['y']]
+            [self.c['x'], self.c['y']] = [self.c['x'] / len(points), self.c['y'] / len(points)]
+            sortedPts = sorted(points, key=self.angle)
+        return sortedPts
+
 
     # Creates list of QPoints to be turned into a QPolygon
     ## Assumes pList is a list of dictionaries as [{"x" : x0, "y" : y0},  ... , {"x" : xn, "y" : yn}]

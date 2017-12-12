@@ -142,9 +142,9 @@ class MainWindow(QMainWindow):
                     self.videoFrame += moveDir
             else:
                 self.currIndex += moveDir
-            if self.videoFrame is not None and self.videoNumFrames is not None:
-                self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
-            self.getNewFrame()
+            self.currIndex = self.currIndex % len(self.files)
+            self.imageCount.setText('Processing image {0}/{1}'.format(self.videoFrame if self.useVideo else self.currIndex,
+                self.videoNumFrames if self.useVideo else len(self.files)))
         if self.frame is not None:
             # SHIFT
             if e.key() == Qt.Key_Shift:   self.frame.keys.SHIFT = True
@@ -188,10 +188,32 @@ class MainWindow(QMainWindow):
                     self.frame.frameDict["annotation"] = []
                 else:
                     self.statusBar.showMessage('Deleted 0 polygons')
+            # elif e.key() == Qt.Key_F:
+            #     prevFrame = None; prevImage = None
+            #     currFrame = None; currImage = None
+            #     for i in range(0, len(self.videoDict["frame"])): # each frame
+            #         if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
+            #                 currFrame = self.videoDict["frame"][i]
+            #                 currImage = cv2.imread(self.files[self.currIndex], 0)
+
+            #         if self.currIndex >= 1 and ('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex - 1]):
+            #                 prevFrame = self.videoDict["frame"][i]
+            #                 prevImage = cv2.imread(self.files[self.currIndex - 1], 0)
+
+            #         if prevFrame is not None and currFrame is not None:
+            #             break
+
+            #     if prevFrame is not None and currFrame is not None:
+            #         self.opticalFlow(prevFrame, prevImage, currFrame, currImage)
 
     def keyReleaseEvent(self, e):
-        if e.key() == Qt.Key_Escape:
+        if e.key() == Qt.Key_Escape:self.currIndex = self.currIndex % len(self.files)
             self.closeEvent()
+        if e.key() == Qt.Key_Comma or e.key() == Qt.Key_Period:
+            if not e.isAutoRepeat():
+                if self.videoFrame is not None and self.videoNumFrames is not None:
+                    self.videoFrame = max(0, min(self.videoFrame, self.videoNumFrames))
+                self.getNewFrame()
         if self.frame is not None:
             # SHIFT
             if e.key() == Qt.Key_Shift:   self.frame.keys.SHIFT = False
@@ -290,7 +312,13 @@ class MainWindow(QMainWindow):
             # copyFrame = {}
             # if self.frame is not None:
             #     copyFrame = self.frame.frameDict
+            tempKeys = None
+            if self.frame is not None:
+                tempKeys = self.frame.keys
+
             self.frame = Frame(self, self.currImage)
+            if tempKeys is not None:
+                self.frame.keys = tempKeys
             if len(self.videoDict["frame"]) == 0 or self.useVideo:
                 self.readInPolygons()
 
@@ -308,7 +336,7 @@ class MainWindow(QMainWindow):
                 self.statusBar.showMessage('Frame loaded from file')
                 self.frame.frameDict = tempFrame
             else:
-                print("{}: temp frame is empty!".format(int(self.files[self.currIndex][:-4])))
+                # print("{}: temp frame is empty!".format(int(self.files[self.currIndex][:-4])))
                 self.frame.frameDict = {"annotation" : [], "frameNo" : int(self.files[self.currIndex][:-4])}
 
             if self.frame.frameDict != {}:
@@ -320,6 +348,11 @@ class MainWindow(QMainWindow):
             self.frame = None
 
         self.setCentralWidget(self.frame)
+
+    # def opticalFlow(self, prevFrame, prevImage, currFrame, currImage):
+        # for anno in prevFrame['annotation']:
+        #     if 'p' in anno:
+                # print('{0}, {1}'.format(p0, p1))
 
     def savePoly(self):
         if self.frame is not None:

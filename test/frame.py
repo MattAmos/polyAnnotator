@@ -83,9 +83,9 @@ class Frame(QFrame):
 
         if "annotation" in self.frameDict and len(self.points) > 0:
             self.modified = True
-            print(self.polyIndex)
+            # print(self.polyIndex)
             self.frameDict["annotation"].insert(self.polyIndex, {"p" : list(self.points)})
-            print(self.frameDict["annotation"][self.polyIndex]["p"])
+            # print(self.frameDict["annotation"][self.polyIndex]["p"])
             self.polyIndex += 1
             self.points = []
 
@@ -111,6 +111,7 @@ class Frame(QFrame):
                 # Sort by distance in x from centre * distance in y from centre
                 sortedPoly = sorted(polygon["p"], key=functools.cmp_to_key(lambda p1, p2: int((p1["x"] - c[0]) * (p2["y"] - c[1]) - (p2["x"] - c[0]) * (p1["y"] - c[1]))))
                 polygons.append(sortedPoly)
+            # print('sorting! {0}'.format(polygons))
         self.polygons = polygons
 
     def findNearestPointInPolygon(self, point):
@@ -329,7 +330,7 @@ class Frame(QFrame):
         qp.setPen(QPen(Qt.white, BRUSH_SIZE, Qt.SolidLine))
         size = self.size()
         qPoints = self.getQPoints(self.points)
-        for pt in self.points:  qp.drawEllipse(self.scaleFactor * pt["x"], self.scaleFactor * pt["y"], BRUSH_SIZE, BRUSH_SIZE)
+        for pt in self.points:  qp.drawEllipse(self.scaleFactor * pt["x"],self.scaleFactor * pt["y"], BRUSH_SIZE, BRUSH_SIZE)
 
         # Draw outline of focused polygon
         qp.setPen(QPen(Qt.red, 1, Qt.SolidLine))

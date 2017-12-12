@@ -332,8 +332,13 @@ class MainWindow(QMainWindow):
                 self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
 
                 if self.frame.modified:
-                    print("writing...")
                     self.writeOutPolygons()
+            else:
+                for i in range(0, len(self.videoDict["frame"])): # each frame
+                    if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
+                        self.frame.frameDict.update({'annotation' : [{'label' : 'track', 'p' : self.frame.points}]}) #TODO: Make classes configurable
+                        break
+                self.frame.frameDict.update({'annotation' : []})
 
     def writeOutPolygons(self):
         if(len(self.videoDict) > 0):
@@ -358,7 +363,7 @@ class MainWindow(QMainWindow):
         else:
             inputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
             inputFile = '{0}.{1}'.format(self.jsonDir, "json")
-        print('{}'.format(inputFile));
+        print('INPUT FILE: {}'.format(inputFile));
         if(os.path.isfile(inputFile)):
             with open(inputFile, 'r') as f:
                 temp = json.load(f)

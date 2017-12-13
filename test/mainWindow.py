@@ -18,6 +18,8 @@ import video_pb2
 #   annoDict  = {'p' : [], 'label' : ''}
 #   pointDict = {'x' : -1, 'y' : -1}
 
+DIFF_THRESH = 30
+
 ##### MAIN WINDOW CLASS #####
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -188,26 +190,39 @@ class MainWindow(QMainWindow):
                     self.frame.frameDict["annotation"] = []
                 else:
                     self.statusBar.showMessage('Deleted 0 polygons')
-            # elif e.key() == Qt.Key_F:
-            #     prevFrame = None; prevImage = None
-            #     currFrame = None; currImage = None
-            #     for i in range(0, len(self.videoDict["frame"])): # each frame
-            #         if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
-            #                 currFrame = self.videoDict["frame"][i]
-            #                 currImage = cv2.imread(self.files[self.currIndex], 0)
+            elif e.key() == Qt.Key_F:
+                numCopies = 1
+                while numCopies > 0:
+                    numCopies = 0
+                    prevFrame = None; prevImage = None
+                    currFrame = None; currImage = None
+                    for i in range(0, len(self.videoDict["frame"])): # each frame
+                        if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
+                                # print('Found current {0}'.format(self.files[self.currIndex]))
+                                currFrame = self.videoDict["frame"][i]
+                                currImage = cv2.imread('{0}/{1}'.format(self.jsonDir, self.files[self.currIndex]), 0)
+                                # print(currImage)
 
-            #         if self.currIndex >= 1 and ('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex - 1]):
-            #                 prevFrame = self.videoDict["frame"][i]
-            #                 prevImage = cv2.imread(self.files[self.currIndex - 1], 0)
+                        if self.currIndex >= 1 and ('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex - 1]):
+                                # print('Found previous {0}'.format(self.files[self.currIndex - 1]))
+                                prevFrame = self.videoDict["frame"][i]
+                                prevImage = cv2.imread('{0}/{1}'.format(self.jsonDir, self.files[self.currIndex - 1]), 0)
+                                # print(prevImage)
 
-            #         if prevFrame is not None and currFrame is not None:
-            #             break
+                        if prevFrame is not None and currFrame is not None:
+                            break
 
-            #     if prevFrame is not None and currFrame is not None:
-            #         self.opticalFlow(prevFrame, prevImage, currFrame, currImage)
+                    if prevFrame is not None and prevImage is not None and currFrame is not None and currImage is not None:
+                        numCopies = self.opticalFlow(prevFrame, prevImage, currFrame, currImage)
+                        print(numCopies)
+                        if numCopies > 0:
+                            self.currIndex += 1
+                            self.currIndex = self.currIndex % len(self.files)
+                    else: print('something is none!')
 
     def keyReleaseEvent(self, e):
-        if e.key() == Qt.Key_Escape:self.currIndex = self.currIndex % len(self.files)
+        if e.key() == Qt.Key_Escape:
+            self.currIndex = self.currIndex % len(self.files)
             self.closeEvent()
         if e.key() == Qt.Key_Comma or e.key() == Qt.Key_Period:
             if not e.isAutoRepeat():
@@ -336,7 +351,6 @@ class MainWindow(QMainWindow):
                 self.statusBar.showMessage('Frame loaded from file')
                 self.frame.frameDict = tempFrame
             else:
-                # print("{}: temp frame is empty!".format(int(self.files[self.currIndex][:-4])))
                 self.frame.frameDict = {"annotation" : [], "frameNo" : int(self.files[self.currIndex][:-4])}
 
             if self.frame.frameDict != {}:
@@ -349,43 +363,71 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.frame)
 
-    # def opticalFlow(self, prevFrame, prevImage, currFrame, currImage):
-        # for anno in prevFrame['annotation']:
-        #     if 'p' in anno:
-                # print('{0}, {1}'.format(p0, p1))
+    def opticalFlow(self, prevFrame, prevImage, currFrame, currImage):
+        numCopies = 0
+        for anno in prevFrame['annotation']:
+            if 'p' in anno:
+                tempAnno = {'p' : [], 'label' : 'track'}
+                for p in anno['p']:
+                    if p['x'] + 1 < prevImage.shape[1] and p['x'] - 1 > 0 and p['y'] + 1 < prevImage.shape[0] and p['y'] - 1 > 0:
+                        diffScore = 0
+                        for x in range(-1, 1):
+                            for y in range(-1, 1):
+                                print('Curr: {0}'.format(currImage[int(p['y'] + y), int(p['x'] + x)]))
+                                print('Prev: {0}'.format(prevImage[int(p['y'] + y), int(p['x'] + x)]))
+
+                                diffScore += abs(int(currImage[int(p['y'] + y), int(p['x'] + x)]) - int(prevImage[int(p['y'] + y), int(p['x'] + x)]))
+                        print('diffScore: {0}'.format(diffScore))
+                        if diffScore < DIFF_THRESH:
+                            tempAnno['p'].append({'x' : p['x'], 'y' : p['y']})
+                            numCopies += 1
+                    else:
+                        tempAnno['p'].append({'x' : p['x'], 'y' : p['y']})
+                if len(tempAnno['p'] > 0):
+                    currFrame['annotation'].append(deepcopy(tempAnno))
+        print(numCopies)
+        return numCopies
 
     def savePoly(self):
         if self.frame is not None:
             if "annotation" in self.frame.frameDict and len(self.frame.frameDict["annotation"]) > 0:
+                found = False
                 for i in range(0, len(self.videoDict["frame"])): # each frame
                     if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
                         self.videoDict["frame"][i] = self.frame.frameDict
+                        found = True
                         break
-
+                if found == False:
+                    self.videoDict["frame"].append({"annotation" : [], "frameNo" : int(self.files[self.currIndex][:-4])})
                 self.polygonCount.setText('{0} polygons in image'.format(len(self.frame.frameDict["annotation"])))
 
                 if self.frame.modified:
                     self.writeOutPolygons()
             else:
+                found = False
                 for i in range(0, len(self.videoDict["frame"])): # each frame
                     if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):
                         self.frame.frameDict.update({'annotation' : [{'label' : 'track', 'p' : self.frame.points}]}) #TODO: Make classes configurable
+                        found = True
                         break
+                if found == False:
+                    self.videoDict["frame"].append({"annotation" : [], "frameNo" : int(self.files[self.currIndex][:-4])})
                 self.frame.frameDict.update({'annotation' : []})
+        else:
+            print('Frame not initialised!')
 
     def writeOutPolygons(self):
-        if(len(self.videoDict) > 0):
-            if self.useVideo:
-                outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
-                outputFile = '{0}_{1:010d}.{2}'.format(os.path.splitext(outputFile)[0], self.videoFrame, "json")
-            else:
-                outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
-                outputFile = '{0}.{1}'.format(self.jsonDir, "json")
+        if self.useVideo:
+            outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
+            outputFile = '{0}_{1:010d}.{2}'.format(os.path.splitext(outputFile)[0], self.videoFrame, "json")
+        else:
+            outputFile = os.path.join(self.jsonDir, os.path.basename(self.files[self.currIndex]))
+            outputFile = '{0}.{1}'.format(self.jsonDir, "json")
 
-            with open(outputFile, 'w') as f:
-                json.dump(self.videoDict, f)
+        with open(outputFile, 'w') as f:
+            json.dump(self.videoDict, f)
 
-            self.statusBar.showMessage('Successfully saved {0} frames to file {1}'.format(len(self.videoDict["frame"]), outputFile))
+        self.statusBar.showMessage('Successfully saved {0} frames to file {1}'.format(len(self.videoDict["frame"]), outputFile))
 
     def readInPolygons(self):
         # self.protoReadInPolygons()

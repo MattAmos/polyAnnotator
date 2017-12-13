@@ -407,14 +407,13 @@ class MainWindow(QMainWindow):
                     print('Before: {0}'.format(len(self.videoDict["frame"])))
                     currFrame['annotation'].append(deepcopy(tempAnno))
                     print('After: {0}'.format(len(self.videoDict["frame"])))
-        print(numCopies)
+        # print(numCopies)
         return numCopies, totalPoints, currFrame
 
     def savePoly(self):
         if self.frame is not None:
             found = False
             if "annotation" in self.frame.frameDict and len(self.frame.frameDict["annotation"]) > 0:
-                print(len(self.frame.frameDict["annotation"]))
                 for i in range(0, len(self.videoDict["frame"])): # each frame
                     # print('{0} ?= {1}'.format('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG"), self.files[self.currIndex]))
                     if('{0:010d}.{1}'.format(self.videoDict["frame"][i]["frameNo"], "JPG") == self.files[self.currIndex]):

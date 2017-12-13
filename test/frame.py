@@ -258,6 +258,7 @@ class Frame(QFrame):
 
             # Delete point from polygon
             if self.keys.SHIFT and not self.keys.ALT:
+                print('should be deleting!')
                 temp = [z for z in self.points if self.getSquaredDistance([z["x"] , z["y"]], [x, y]) > (SIZE + SIZE)**2]
                 if len(self.points) - len(temp) > 0:
                     self.points = [z for z in self.points if self.getSquaredDistance([z["x"] , z["y"]], [x, y]) > (SIZE + SIZE)**2]
@@ -328,15 +329,16 @@ class Frame(QFrame):
             count = 0
             for i in range(0, 360, int(360/len(self.frameDict["annotation"]))):
                 polygon = self.frameDict["annotation"][count]["p"]
-                # sortedPoly = self.sortPoints(polygon)
-                qPoints = self.getQPoints(polygon)
-                h = i
-                s = 90 + random.random()*10
-                l = 50 + random.random()*10
-                color.setHsl(h, s, l, 127)
-                brush.setColor(color)
-                qp.setBrush(brush)
-                qp.drawConvexPolygon(QPolygon(qPoints))
+                if polygon != self.points:
+                    # sortedPoly = self.sortPoints(polygon)
+                    qPoints = self.getQPoints(polygon)
+                    h = i
+                    s = 90 + random.random()*10
+                    l = 50 + random.random()*10
+                    color.setHsl(h, s, l, 100)
+                    brush.setColor(color)
+                    qp.setBrush(brush)
+                    qp.drawConvexPolygon(QPolygon(qPoints))
                 count += 1
                 if(count >= len(self.frameDict["annotation"])):
                     break
@@ -352,7 +354,7 @@ class Frame(QFrame):
         qp.drawConvexPolygon(QPolygon(qPoints))
 
         # Draw focused polygon
-        color.setHsl(255, 255, 255, 127)
+        color.setHsl(255, 255, 255, 90)
         brush.setColor(color)
         qp.setBrush(brush)
         qp.drawConvexPolygon(QPolygon(qPoints))

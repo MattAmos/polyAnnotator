@@ -44,8 +44,8 @@ class Imager:
 			cv2.imwrite('{0}/{1:010d}.{2}'.format(self.trueName, self.frameNo, 'JPG'), frame)
 			self.frameNo += 1
 			ret, frame = cap.read()
-		print(videoDict)
 		with open('{0}.{1}'.format(self.trueName, 'json'), 'w') as f:
 			json.dump(videoDict, f)
+		print('[LOG] Saved {0} images to directory {1}. Created annotation file {2}'.format(numFrames, self.trueName, '{0}.{1}'.format(self.trueName, 'json')))
 		cap.release()
 	

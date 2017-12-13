@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from enum import Enum
+from copy import deepcopy
 
 SIZE = 10
 BRUSH_SIZE = 5
@@ -264,7 +265,19 @@ class Frame(QFrame):
 
             # Add point to polygon
             elif self.keys.CTRL:
-                self.points.append({"x" : x, "y" : y})
+                # Find where the point should be 
+                if len(self.points) > 0:
+                    tempPoints = deepcopy(self.points)
+                    tempPoints.append({"x" : x, "y" : y})
+                    tempPoints = self.sortPoints(tempPoints)
+                    i = tempPoints.index({"x" : x, "y" : y})
+                    pIndex = (i - 1) % len(tempPoints); nIndex = (i + 1) % len(tempPoints)
+                    pre    = tempPoints[pIndex];        nxt    = tempPoints[nIndex]
+                    j = self.points.index(pre)
+                    # And insert into points list
+                    self.points.insert((j + 1) % len(self.points), {"x" : x, "y" : y})
+                else:
+                    self.points.append({"x" : x, "y" : y})
                 self.sortPolygons()
 
             self.oldPt = []

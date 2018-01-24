@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from enum import Enum
+from copy import deepcopy
 
 SIZE = 10
 BRUSH_SIZE = 5
@@ -257,6 +258,7 @@ class Frame(QFrame):
 
             # Delete point from polygon
             if self.keys.SHIFT and not self.keys.ALT:
+                print('should be deleting!')
                 temp = [z for z in self.points if self.getSquaredDistance([z["x"] , z["y"]], [x, y]) > (SIZE + SIZE)**2]
                 if len(self.points) - len(temp) > 0:
                     self.points = [z for z in self.points if self.getSquaredDistance([z["x"] , z["y"]], [x, y]) > (SIZE + SIZE)**2]
@@ -264,7 +266,19 @@ class Frame(QFrame):
 
             # Add point to polygon
             elif self.keys.CTRL:
-                self.points.append({"x" : x, "y" : y})
+                # Find where the point should be 
+                if len(self.points) > 0:
+                    tempPoints = deepcopy(self.points)
+                    tempPoints.append({"x" : x, "y" : y})
+                    tempPoints = self.sortPoints(tempPoints)
+                    i = tempPoints.index({"x" : x, "y" : y})
+                    pIndex = (i - 1) % len(tempPoints); nIndex = (i + 1) % len(tempPoints)
+                    pre    = tempPoints[pIndex];        nxt    = tempPoints[nIndex]
+                    j = self.points.index(pre)
+                    # And insert into points list
+                    self.points.insert((j + 1) % len(self.points), {"x" : x, "y" : y})
+                else:
+                    self.points.append({"x" : x, "y" : y})
                 self.sortPolygons()
 
             self.oldPt = []
@@ -315,15 +329,16 @@ class Frame(QFrame):
             count = 0
             for i in range(0, 360, int(360/len(self.frameDict["annotation"]))):
                 polygon = self.frameDict["annotation"][count]["p"]
-                # sortedPoly = self.sortPoints(polygon)
-                qPoints = self.getQPoints(polygon)
-                h = i
-                s = 90 + random.random()*10
-                l = 50 + random.random()*10
-                color.setHsl(h, s, l, 127)
-                brush.setColor(color)
-                qp.setBrush(brush)
-                qp.drawConvexPolygon(QPolygon(qPoints))
+                if polygon != self.points:
+                    # sortedPoly = self.sortPoints(polygon)
+                    qPoints = self.getQPoints(polygon)
+                    h = i
+                    s = 90 + random.random()*10
+                    l = 50 + random.random()*10
+                    color.setHsl(h, s, l, 100)
+                    brush.setColor(color)
+                    qp.setBrush(brush)
+                    qp.drawConvexPolygon(QPolygon(qPoints))
                 count += 1
                 if(count >= len(self.frameDict["annotation"])):
                     break
@@ -339,7 +354,7 @@ class Frame(QFrame):
         qp.drawConvexPolygon(QPolygon(qPoints))
 
         # Draw focused polygon
-        color.setHsl(255, 255, 255, 127)
+        color.setHsl(255, 255, 255, 90)
         brush.setColor(color)
         qp.setBrush(brush)
         qp.drawConvexPolygon(QPolygon(qPoints))

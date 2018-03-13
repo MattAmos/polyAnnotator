@@ -1,11 +1,9 @@
 #! /usr/bin/env python2
 
-from __future__ import print_function
-from copy import deepcopy
-
 import json
 import os
-import cv2
+import skvideo.io
+from skimage import io
 
 class Imager:
 	def __init__(self, argv):
@@ -28,24 +26,30 @@ class Imager:
 			print('[ERR] Usage: python main.py <path>')
 
 	def processVideo(self):
-		cap = cv2.VideoCapture(self.videoFile)
-		if cap.isOpened() == False:
+		print(self.videoFile)
+		cap = skvideo.io.vreader(self.videoFile)
+		metadata = skvideo.io.ffprobe(self.videoFile)
+
+		# Consume first frame to determine video settings
+		frame = next(cap, None)
+		if frame is None:
 			print('[ERR] Failed to open video file "{}"'.format(self.videoFile))
 			exit()
-		ret, frame = cap.read()
+
+		numFrames = metadata['video']['@nb_frames']
 		videoDict = {'path' : self.videoFile, 'width' : frame.shape[1], 'height' : frame.shape[0], 'frame' : []}
 
-		numFrames = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
-		divider = int(numFrames/100.0)
-		while(self.frameNo < numFrames):
+		self.frameNo = 0
+		for frame in cap:
 			frameDict = {'frameNo' : self.frameNo, 'annotation' : []}
 			videoDict['frame'].append(frameDict)
-			print('[{0:5d}/{1:5d}] {2}/{3:010d}.{4}'.format(self.frameNo, numFrames, self.trueName, self.frameNo, 'JPG'))
-			cv2.imwrite('{0}/{1:010d}.{2}'.format(self.trueName, self.frameNo, 'JPG'), frame)
+			print('[{0:5d}/{1:5d}] {2}/{3:010d}.{4}'.format(self.frameNo, int(numFrames), self.trueName, self.frameNo, 'JPG'))
+			io.imsave('{0}/{1:010d}.{2}'.format(self.trueName, self.frameNo, 'JPG'), frame)
 			self.frameNo += 1
-			ret, frame = cap.read()
-		with open('{0}.{1}'.format(self.trueName, 'json'), 'w') as f:
-			json.dump(videoDict, f)
-		print('[LOG] Saved {0} images to directory {1}. Created annotation file {2}'.format(numFrames, self.trueName, '{0}.{1}'.format(self.trueName, 'json')))
+		if not os.path.isfile('{0}.{1}'.format(self.trueName, 'json')):
+			with open('{0}.{1}'.format(self.trueName, 'json'), 'w') as f:
+				json.dump(videoDict, f)
+			print('[LOG] Created annotation file {0}'.format('{0}.{1}'.format(self.trueName, 'json')))
+		print('[LOG] Saved {0} images to directory {1}'.format(numFrames, self.trueName))
 		cap.release()
 	

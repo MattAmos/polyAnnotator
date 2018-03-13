@@ -28,7 +28,7 @@ class Segmenter:
 					print("[LOG] Read polygons data of {} frames from {}".format(len(self.polyPool["frame"]), self.currDir + ".json"))
 
 	def drawImages(self):
-		numPoly = 0; numPts = 0
+		numPoly = 0; numPts = 0; numFrames = len(self.polyPool['frame'])
 		for f in self.polyPool["frame"]:
 			numPoly += len(f["annotation"])
 			raw = Image.open(self.currDir + "/" + '{0:010d}.{1}'.format(f["frameNo"], 'JPG'))
@@ -48,5 +48,6 @@ class Segmenter:
 				dPolygon += [firstPt["x"], firstPt["y"]]
 				d.polygon(dPolygon, COLOUR, 255)
 				d.line(dPolygon, 255, BORDER)
-			seg.save(self.currDir + "_seg/" + '{0:010d}.{1}'.format(f["frameNo"], 'JPG'), seg.format)
+			seg.save(self.currDir + "_seg/" + '{0:010d}.{1}'.format(f["frameNo"], 'PNG'), seg.format)
+			print('[{0:5d}/{1:5d}] {2}/{3:010d}.{4}'.format(int(f["frameNo"]), int(numFrames), self.currDir + '/', int(f["frameNo"]), 'PNG'))
 		print("[LOG] {} images processed, {} points drawn constituting {} polygons".format(len(self.polyPool["frame"]), numPts, numPoly))

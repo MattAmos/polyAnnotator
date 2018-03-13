@@ -30,6 +30,11 @@ class Segmenter:
 	def drawImages(self):
 		numPoly = 0; numPts = 0; numFrames = len(self.polyPool['frame'])
 		for f in self.polyPool["frame"]:
+			print('[{0:5d}/{1:5d}] {2}/{3:010d}.{4}'.format(f["frameNo"], numFrames, self.currDir, f["frameNo"], 'JPG'))
+			if '{0:010d}.{1}'.format(f["frameNo"], 'JPG') in files:
+				files.remove('{0:010d}.{1}'.format(f["frameNo"], 'JPG'))
+			else:
+				print('[ERR] {0} not in file list'.format('{0:010d}.{1}'.format(f["frameNo"], 'JPG')))
 			numPoly += len(f["annotation"])
 			raw = Image.open(self.currDir + "/" + '{0:010d}.{1}'.format(f["frameNo"], 'JPG'))
 			seg = Image.new('L', raw.size, 0)
@@ -48,6 +53,12 @@ class Segmenter:
 				dPolygon += [firstPt["x"], firstPt["y"]]
 				d.polygon(dPolygon, COLOUR, 255)
 				d.line(dPolygon, 255, BORDER)
-			seg.save(self.currDir + "_seg/" + '{0:010d}.{1}'.format(f["frameNo"], 'PNG'), seg.format)
 			print('[{0:5d}/{1:5d}] {2}/{3:010d}.{4}'.format(int(f["frameNo"]), int(numFrames), self.currDir + '/', int(f["frameNo"]), 'PNG'))
+			seg.save(self.currDir + "_seg/" + '{0:010d}.{1}'.format(f["frameNo"], 'JPG'), seg.format)
+
+		for file in files:
+			raw = Image.open(self.currDir + "/" + file)
+			seg = Image.new('L', raw.size, 0)
+			seg.save(self.currDir + "_seg/" + file, seg.format)
+
 		print("[LOG] {} images processed, {} points drawn constituting {} polygons".format(len(self.polyPool["frame"]), numPts, numPoly))
